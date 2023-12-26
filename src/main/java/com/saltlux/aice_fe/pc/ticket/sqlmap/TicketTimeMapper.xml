@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.ticket.dao.TicketTimeDao">
+
+    <select id="getTicketTime" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+        SELECT A.*       
+        FROM tbl_conf_noti_ticket_close A
+        WHERE A.fk_company = #{fkCompany}
+    </select>
+   
+    <insert id="ticketTimeMerge">
+		INSERT INTO tbl_conf_noti_ticket_close (
+			<if test="pk_conf_noti_ticket_close != null and pk_conf_noti_ticket_close > 0">pk_conf_noti_ticket_close, </if>
+			fk_company
+			, noti_time
+			, close_day_before
+			, close_day_repeat
+			, unread_day_after
+			, unread_day_repeat
+			, master_day_after
+ 			, fk_writer
+			, fd_regdate
+		) 
+		VALUE(
+			<if test="pk_conf_noti_ticket_close != null and pk_conf_noti_ticket_close > 0">#{pk_conf_noti_ticket_close}, </if>
+			#{fk_company}
+			, #{noti_time}
+			, #{close_day_before}
+			, #{close_day_repeat}
+			, #{unread_day_after}
+			, #{unread_day_repeat}
+			, #{master_day_after}
+			, #{fk_modifier}
+			, now()
+		)
+		ON DUPLICATE KEY UPDATE
+			fk_company = #{fk_company}
+			, noti_time = #{noti_time}
+			, close_day_before = #{close_day_before}
+			, close_day_repeat = #{close_day_repeat}
+			, unread_day_after = #{unread_day_after}
+			, unread_day_repeat = #{unread_day_repeat}
+			, master_day_after = #{master_day_after}
+			, fk_modifier = #{fk_modifier}
+			, fd_moddate = now()
+    </insert>
+    
+    <select id="getAlarmSet" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+        SELECT A.*       
+        FROM tbl_ai_conf_noti A
+        WHERE A.fk_company = #{fkCompany} AND A.check_type = #{type}
+    </select>
+    
+    <insert id="alarmSetMerge">
+		INSERT INTO tbl_ai_conf_noti (
+			<if test="pk_ai_conf_noti != null and pk_ai_conf_noti > 0">pk_ai_conf_noti, </if>
+
+			fk_company
+			, check_type
+			, sms_yn
+			, kakao_yn
+<!-- 			, push_yn
+			, msg_body
+			, use_yn -->
+			, fk_writer
+			, fd_regdate
+		) 
+		VALUE(
+			<if test="pk_ai_conf_noti != null and pk_ai_conf_noti > 0">#{pk_ai_conf_noti}, </if>
+			#{fk_company}
+			, #{check_type}
+			, #{sms_yn}
+			, #{kakao_yn}
+			<!-- , #{push_yn}
+			, #{msg_body}
+			, #{use_yn} -->
+			, #{fk_modifier}
+			, now()
+		)
+		ON DUPLICATE KEY UPDATE
+			fk_company = #{fk_company}
+			, check_type = #{check_type}
+			, sms_yn = #{sms_yn}
+			, kakao_yn = #{kakao_yn}
+			<!-- , push_yn = #{push_yn}
+			, msg_body = #{msg_body}
+			, use_yn = #{use_yn} -->
+			, fk_modifier = #{fk_modifier}
+			, fd_moddate = now()
+    </insert>
+    
+</mapper>

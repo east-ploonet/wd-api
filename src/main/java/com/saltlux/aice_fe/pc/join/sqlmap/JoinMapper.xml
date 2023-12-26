@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.join.dao.JoinDao">
+
+    <select id="getTermsList" resultType="TermsVo">
+        <![CDATA[
+        ]]>
+              WITH with_terms_latest AS (
+
+        SELECT  MAX(pk_terms) AS pk_terms
+
+        FROM    tbl_terms
+
+        WHERE   terms_screen_cd = 'TS0001'
+
+        AND     fd_terms_target_code = #{fd_terms_target_code}
+
+        GROUP BY fd_terms_code
+
+        )
+
+        SELECT    A.pk_terms
+
+                , A.fd_terms_target_code
+
+                , A.fd_terms_code
+
+                , A.fd_terms_title
+
+                , A.fd_terms_contents
+
+                , A.fd_terms_mandatory_yn
+
+                , A.fd_terms_open_date
+
+                , A.fd_open_yn
+
+                , A.fd_regdate
+
+                , A.fd_moddate
+
+
+
+        FROM    tbl_terms A
+
+                    INNER JOIN
+
+                (SELECT pk_terms FROM with_terms_latest) T ON A.pk_terms = T.pk_terms
+        order by A.disp_order asc
+    </select>
+
+    <insert id="insertCompanyTerms">
+        INSERT INTO tbl_terms_agree_company
+         (
+          fk_terms
+        , fk_company_company
+        , fd_agree_yn
+        , fd_agree_date
+        )
+        VALUES
+        <foreach collection="fkTermsArr" item="item" separator=",">
+        (
+          #{item}
+        , #{fkCompany}
+        , #{agreeYn}
+        , now()
+        )
+        </foreach>
+    </insert>
+
+    <insert id="insertStaffTerms">
+        INSERT INTO tbl_terms_agree_staff
+        (
+          fk_terms
+        , fk_company_staff
+        , fd_agree_yn
+        , fd_agree_date
+        )
+        VALUES
+        <foreach collection="fkTermsArr" item="item" separator=",">
+        (
+          #{item}
+        , #{fkStaff}
+        , #{agreeYn}
+        , now()
+        )
+        </foreach>
+    </insert>
+
+    <insert id="insertCompany">
+        INSERT INTO tbl_company
+        (
+          fd_company_id
+        , fd_company_status_code
+        , fd_company_name
+        , fd_biz_license_num
+        , fd_company_phone
+        , fd_company_fax
+        , fd_company_website
+        , fd_address_zipcode
+        , fd_address_common
+        , fd_address_detail
+        , fd_company_logo_file_path
+        , fd_company_logo_file_name
+        , fd_biz_license_file_path
+        , fd_biz_license_file_name
+        )
+        VALUES
+        (
+          #{fd_company_id}
+        , #{fd_company_status_code}
+        , #{fd_company_name}
+        , #{fd_biz_license_num}
+        , #{fd_company_phone}
+        , #{fd_company_fax}
+        , #{fd_company_website}
+        , #{fd_address_zipcode}
+        , #{fd_address_common}
+        , #{fd_address_detail}
+        , #{fd_company_logo_file_path}
+        , #{fd_company_logo_file_name}
+        , #{fd_biz_license_file_path}
+        , #{fd_biz_license_file_name}
+        )
+        <selectKey keyProperty="pk_company" resultType="long" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <insert id="insertCompanyStaff">
+         INSERT INTO tbl_company_staff
+        (
+          fk_company
+        , fd_staff_pw
+        , fd_staff_level_code
+        , fd_staff_status_code
+        , fd_staff_id
+        , fd_staff_name
+        , fd_staff_mobile
+        , fd_staff_phone
+        , fd_staff_email
+        , fd_staff_duty
+        , fd_company_master_yn
+        , fd_staff_birth
+        , fd_staff_gender_mf
+        , fd_staff_national_yn
+        , fd_staff_mobile_type
+        , fd_staff_di
+        , fd_staff_ci
+        )
+        VALUES
+        (
+          #{fk_company}
+        , #{fd_staff_pw}
+        , #{fd_staff_level_code}
+        , #{fd_staff_status_code}
+        , #{fd_staff_id}
+        , #{fd_staff_name}
+        , #{fd_staff_mobile}
+        , #{fd_staff_phone}
+        , #{fd_staff_email}
+        , #{fd_staff_duty}
+        , #{fd_company_master_yn}
+        , #{fd_staff_birth}
+        , #{fd_staff_gender_mf}
+        , #{fd_staff_national_yn}
+        , #{fd_staff_mobile_type}
+        , #{fd_staff_di}
+        , #{fd_staff_ci}
+        )
+        <selectKey keyProperty="pk_company_staff" resultType="long" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <insert id="insertCompanyStaffAi">
+         INSERT INTO tbl_company_staff
+        (
+          fk_company
+        , fk_staff_work
+        , fd_staff_level_code
+        , fd_staff_status_code
+        , fd_staff_ai_yn
+        , fd_staff_ai_uid
+        , fd_staff_id
+        , fd_staff_name
+        , fd_staff_email
+        , fk_writer
+        , fk_staff_work_code
+        , fd_staff_persona
+        )
+        VALUES
+        (
+          #{fk_company}
+        , #{fk_staff_work}
+        , #{fd_staff_level_code}
+        , #{fd_staff_status_code}
+        , #{fd_staff_ai_yn}
+        , #{fd_staff_ai_uid}
+        , #{fd_staff_id}
+        , #{fd_staff_name}
+        , #{fd_staff_email}
+        , #{fk_writer}
+        , #{fk_staff_work_code}
+        , #{fd_staff_persona}
+        )
+        <selectKey keyProperty="pk_company_staff" resultType="long" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <insert id="insertCompanyDept">
+        INSERT INTO tbl_company_dept
+        (
+          fk_company
+        , fd_dept_name
+        , fd_default_yn
+        <if test="fd_dept_ai_yn != null and fd_dept_ai_yn != ''">
+        , fd_dept_ai_yn
+        </if>
+        , fk_writer
+        )
+        VALUES
+        (
+          #{fk_company}
+        , #{fd_dept_name}
+        , #{fd_default_yn}
+        <if test="fd_dept_ai_yn != null and fd_dept_ai_yn != ''">
+        , #{fd_dept_ai_yn}
+        </if>
+        , #{fk_writer}
+        )
+        <selectKey keyProperty="pk_company_dept" resultType="long" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <insert id="insertCompanyDeptStaff">
+        INSERT INTO tbl_company_dept_staff
+        (
+          fk_company_dept
+        , fk_company_staff
+        )
+        VALUES
+        (
+          #{fk_company_dept}
+        , #{fk_company_staff}
+        )
+    </insert>
+
+    <update id="updateCompanyInfo">
+        UPDATE tbl_company
+           SET fk_writer  = #{fk_writer}
+         WHERE pk_company = #{pk_company}
+    </update>
+
+    <update id="updateCompany">
+        UPDATE tbl_company
+           SET fd_company_name  = #{fd_company_name},
+                fd_address_common = #{fd_address_common},
+                fd_address_detail = #{fd_address_detail},
+                fd_company_phone = #{fd_company_phone},
+                fd_company_website = #{fd_company_website},
+                fd_moddate = now()
+         WHERE pk_company = #{pk_company}
+    </update>
+
+    <update id="updateCompanyStaffInfo">
+        UPDATE tbl_company_staff
+           SET fk_writer       = #{fk_writer}
+        WHERE pk_company_staff = #{pk_company_staff}
+    </update>
+
+    <select id="checkStaffId" resultType="CompanyStaffVo">
+        SELECT  *
+          FROM  tbl_company_staff
+         WHERE  fd_staff_id = #{staffId}
+            <!-- AND fd_company_master_yn = 'Y' -->
+    </select>
+
+    <select id="dupCheckBizNumber" resultType="CompanyVo">
+        SELECT *
+          FROM tbl_company
+         WHERE fd_biz_license_num = #{bizNum}
+    </select>
+
+    <select id="checkCompanyId" resultType="CompanyVo">
+        SELECT *
+          FROM tbl_company
+         WHERE fd_company_id = #{companyId}
+    </select>
+</mapper>

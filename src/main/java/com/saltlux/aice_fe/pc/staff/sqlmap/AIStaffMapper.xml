@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.staff.dao.AIStaffDao">
+
+	<select id="selectAIstaffCount" resultType="java.lang.Integer">
+		SELECT COUNT(A.pk_company_staff) AS cnt
+		FROM tbl_company_staff A
+	  WHERE A.fd_staff_ai_yn = 'Y'
+	  AND A.fk_company = #{fkCompany}
+	  <if test="staffWorkCode != null"> AND A.fk_staff_work_code = #{staffWorkCode}</if>
+	</select>
+	
+	<select id="getAIMainStaff" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+	    SELECT *
+		FROM   tbl_company_staff
+		WHERE  fd_staff_ai_yn = 'Y'
+		AND fk_company = #{fkCompany}
+		ORDER BY fd_regdate DESC
+		LIMIT 1
+    </select>
+    
+    <select id="getBrandTerms" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+    	SELECT *
+		FROM   tbl_brand_terms A
+        INNER JOIN tbl_company_staff B
+        ON A.fk_company_staff = B.pk_company_staff
+        AND A.fk_company = B.fk_company
+		WHERE  A.terms_cd = 'M01F0'
+		AND A.fk_company = #{fkCompany}
+ 		AND A.fk_company_staff = #{fkCompanyStaff}
+        AND A.terms_agree_yn = 'Y'
+    </select>
+    
+    
+	<select id="selectAIstaffList" resultType="map">
+        SELECT A.pk_company_staff
+             , A.fk_company
+             , A.fd_staff_name
+             , A.fd_staff_ai_uid
+             <![CDATA[, CASE WHEN date_add(A.fd_regdate,interval +1 month) <= SYSDATE()]]>
+                    THEN ''
+                    ELSE 'new'
+                  END AS 'fd_ai_new_tag'
+             , A.fd_default_ai as main_ai
+             , E.disp_name AS staff_work_code_name
+             , A.fd_staff_persona
+             , REGEXP_REPLACE(F.full_dnis, '(02|.{3})(.+)(.{4})', '\\1-\\2-\\3') as dnis_num
+             , C.fd_name
+         	 , A.fd_staff_status_code
+         	 , H.front_status 
+         	 , G.disp_name
+         	 , G.fk_ai_policy_avatar_img
+		FROM tbl_company_staff A
+		INNER JOIN tbl_code C 
+		ON A.fd_staff_status_code = C.pk_code
+		LEFT OUTER JOIN tbl_ai_conf_work D
+         ON A.pk_company_staff = D.fk_company_staff_ai
+         AND    D.p_ai_work_cd  IS NULL
+         LEFT OUTER JOIN tbl_ai_policy_work E
+         ON D.ai_work_cd = E.ai_work_cd
+         LEFT OUTER JOIN tbl_company_dnis F
+         ON A.pk_company_staff = F.fk_company_staff_ai
+         AND A.fk_company = F.fk_company
+         AND F.solution_type = 'B11'
+         LEFT OUTER JOIN tbl_ai_conf_avatar_img G
+         ON A.pk_company_staff = G.fk_company_staff_ai
+         AND G.part_type = 'face'
+         LEFT OUTER JOIN tbl_ai_conf_work H
+         ON       A.pk_company_staff = H.fk_company_staff_ai
+         AND    H.p_ai_work_cd  IS NULL
+         WHERE A.fd_staff_ai_yn = 'Y'
+           AND A.fk_company = #{fkCompany}
+           <if test="staffWorkCode != null"> AND A.fk_staff_work_code = #{staffWorkCode}</if>
+            <choose>
+                <when test="orderbyType eq 'name'">
+                    ORDER BY A.fd_staff_name asc
+                </when>
+                <otherwise>ORDER BY A.fd_staff_name asc</otherwise>
+            </choose>
+    </select>
+
+    <select id="getAIstaff" resultType="map">
+        SELECT A.pk_company_staff
+             , A.fk_company
+             , A.fd_staff_id
+             , A.fd_staff_name
+             , A.fd_staff_ai_uid
+             /* 등록자 이름, 부서 정보*/
+             , A.fk_writer
+             , ( SELECT C.fd_staff_name
+                   FROM tbl_company_staff C
+                  WHERE A.fk_writer = C.pk_company_staff ) AS fd_writer_name
+              , ( SELECT BB.fd_dept_name
+                    FROM tbl_company_dept_staff AA
+                          INNER JOIN tbl_company_dept BB
+                                  ON (BB.pk_company_dept = AA.fk_company_dept)
+                   WHERE fk_company_staff = A.fk_writer
+                   ORDER BY AA.fk_company_dept ASC
+                   LIMIT 1 ) AS fd_writer_dept_name
+             , DATE_FORMAT(A.fd_regdate,'%Y.%m.%d') AS fd_regdate
+              /* 수정자 이름, 부서 정보*/
+             , A.fk_modifier
+             , ( SELECT C.fd_staff_name
+                   FROM tbl_company_staff C
+                  WHERE A.fk_modifier = C.pk_company_staff ) AS fd_modifier_name
+             , ( SELECT BB.fd_dept_name
+                   FROM tbl_company_dept_staff AA
+                        INNER JOIN tbl_company_dept BB
+                                ON (BB.pk_company_dept = AA.fk_company_dept)
+                  WHERE fk_company_staff = A.fk_modifier
+                  ORDER BY AA.fk_company_dept ASC
+                  LIMIT 1 ) AS fd_modifier_dept_name
+             , DATE_FORMAT(A.fd_moddate,'%Y.%m.%d') AS fd_moddate
+             , A.fd_staff_persona
+             , fk_staff_work_code
+             , fd_name
+             , C.pk_code
+             , G.disp_name 
+         	 , G.fk_ai_policy_avatar_img
+          FROM tbl_company_staff A
+               LEFT OUTER JOIN tbl_code C
+				ON A.fk_staff_work_code = C.pk_code
+				LEFT OUTER JOIN tbl_ai_conf_avatar_img G
+		         ON       A.pk_company_staff = G.fk_company_staff_ai
+		         AND      G.part_type        = 'face'
+         WHERE A.fd_staff_ai_yn = 'Y'
+           AND A.pk_company_staff = #{pkCompanyStaff}
+    </select>
+
+    <update id="updateAIstaff">
+        UPDATE tbl_company_staff as a, tbl_company_dnis as b
+           SET a.fd_staff_name                 = #{fd_staff_name}
+             , a.fd_staff_ai_uid               = #{fd_staff_ai_uid}
+             , a.fk_modifier                   = #{fk_modifier}
+             , a.fd_moddate                    = now()
+             , a.fd_staff_persona			     = #{fd_staff_persona}
+         WHERE a.pk_company_staff              = #{pk_company_staff}
+         AND b.fk_company 					   = #{fk_company}
+    </update>
+	
+	<update id="updateAIStaffStatus">
+        UPDATE tbl_company_staff
+           SET fd_staff_status_code                 = #{fdStaffStatusCode}
+         WHERE pk_company_staff              = #{pkCompanyStaff}
+    </update>
+	
+	<update id="allMainAiUpdate">
+        UPDATE tbl_company_staff
+           SET fd_default_ai = #{fd_default_ai}
+         WHERE fk_company = #{fk_company}
+         AND   fd_staff_ai_yn = 'Y'
+    </update>
+    
+    <update id="newMainUpdate">
+		UPDATE tbl_company_staff AS a
+		INNER JOIN
+		(SELECT  pk_company_staff,
+		         min(fd_regdate) min_fd_regdate
+		FROM     tbl_company_staff
+		where    fd_staff_ai_yn               = 'Y'
+		and      fk_company                   = #{fk_company}
+		and      fk_staff_work_code is not null
+		group by fk_staff_work_code
+		)
+		t1
+		ON a.pk_company_staff = t1.pk_company_staff
+		SET fd_default_ai     = 'Y'
+    </update>
+    
+
+	<update id="workCodeUpdate">
+        UPDATE tbl_company_staff
+           SET fk_staff_work_code            = #{fk_staff_work_code}
+             , fk_modifier                   = #{fk_modifier}
+             , fd_moddate                    = now()
+             , fd_default_ai				 = #{fd_default_ai}
+         WHERE pk_company_staff              = #{pk_company_staff}
+    </update>
+
+
+
+</mapper>

@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.issue.dao.CompanyCustomerDao">
+
+<!--    <cache-ref namespace="com.saltlux.aice_fe.pc.issue.dao.CompanyCustomerDao"/>-->
+    <insert id="insertCompanyCustomer">
+        INSERT INTO tbl_company_customer(
+        fk_company, fd_customer_name, fd_active_state, fd_company_name, fd_company_dept, fd_company_position,
+        fd_customer_mobile, fd_customer_phone, fd_customer_email, fd_customer_kakao_uid, fd_customer_chat_uid,
+        contact_channel_from, contact_date_from,
+        fk_writer, fd_regdate, fk_modifier, fd_moddate,
+        fd_company_address_common, fd_company_address_detail,
+        fd_additional_information, fd_customer_address_common, fd_customer_address_detail
+        )
+        VALUES (
+        #{fk_company}, #{fd_customer_name}, 'A2201', #{fd_company_name}, #{fd_company_dept}, #{fd_company_position},
+        #{fd_customer_mobile}, #{fd_customer_phone}, #{fd_customer_email}, #{fd_customer_kakao_uid}, #{fd_customer_chat_uid},
+        #{contact_channel_from}, #{contact_date_from},
+        #{fk_writer}, now(), #{fk_modifier}, #{fd_moddate},
+        #{fd_company_address_common}, #{fd_company_address_detail},
+        #{fd_additional_information}, #{fd_customer_address_common}, #{fd_customer_address_detail}
+        )
+        <selectKey keyProperty="pk_company_customer" resultType="long" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <update id="updateCompanyCustomer">
+        UPDATE tbl_company_customer SET
+        fk_company = #{fk_company}, fd_customer_name = #{fd_customer_name}, fd_active_state = #{fd_active_state}, fd_company_name = #{fd_company_name},
+        fd_company_dept = #{fd_company_dept}, fd_company_position = #{fd_company_position},
+        fd_customer_mobile = #{fd_customer_mobile}, fd_customer_phone = #{fd_customer_phone},
+        fd_customer_email = #{fd_customer_email}, fd_customer_kakao_uid = #{fd_customer_kakao_uid},
+        fd_customer_chat_uid = #{fd_customer_chat_uid},
+        contact_channel_from = #{contact_channel_from}, contact_date_from = #{contact_date_from},
+        fk_modifier = #{fk_modifier}, fd_moddate = now(),
+        fd_customer_address_common = #{fd_customer_address_common}, fd_customer_address_detail = #{fd_customer_address_detail},
+        fd_company_address_common = #{fd_company_address_common}, fd_company_address_detail = #{fd_company_address_detail},
+        fd_additional_information = #{fd_additional_information}
+        WHERE pk_company_customer = #{pk_company_customer}
+    </update>
+
+    <update id="changeStatusCompanyCustomer">
+        UPDATE tbl_company_customer SET
+        fd_active_state = #{fd_active_state}
+        WHERE pk_company_customer = #{pk_company_customer}
+    </update>
+
+    <select id="getCompanyCustomer" resultType="CompanyCustomerVo">
+        with with_comapny_customer as (
+        select * from tbl_company_customer where 1 = 1 and fd_active_state != 'A1103'
+        <if test="fk_company != 0 and fk_company != null">
+            and fk_company = #{fk_company}
+        </if>
+        )
+        <include refid="selectCompanyCustomer"></include>
+        <include refid="queryGetCompanyCustomerAppend"/>
+        <if test="search.orderBy != null  and search.orderType !=null and search.orderBy != '' and search.orderType != '' ">
+            ORDER BY ${search.orderBy} ${search.orderType}
+        </if>
+        <if test="search.orderBy == '' and search.orderType == '' or search.orderBy == null and search.orderType == null">
+            ORDER BY tcc.pk_company_customer DESC
+        </if>
+
+        <if test="search.pageSize !='' and search.pageSize != null and search.getPageSize() != 0">
+            Limit ${search.pageSize}
+            <if test="search.page !='' and search.page != null">
+                OFFSET ${(search.page -1) * search.pageSize}
+            </if>
+        </if>
+    </select>
+
+    <select id="countCompanyCustomer" resultType="long">
+        with with_comapny_customer as (
+        select * from tbl_company_customer where 1 = 1 and fd_active_state != 'A1103'
+        <if test="fk_company != 0 and fk_company != null">
+            and fk_company = #{fk_company}
+        </if>
+        )
+        select count(*) from with_comapny_customer tcc
+        <include refid="queryGetCompanyCustomerAppend"/>
+    </select>
+
+    <select id="getCompanyCustomerDetail" resultType="CompanyCustomerVo">
+        with with_comapny_customer as (
+        <include refid="conditionCompanyCustomer"/>
+        )
+        <include refid="selectCompanyCustomer"></include>
+        <include refid="queryGetCompanyCustomerAppend"/>
+    </select>
+
+    <sql id="conditionCompanyCustomer">
+        select * from tbl_company_customer where 1 = 1 and fd_active_state != 'A1103'
+        <if test="pk_company_customer != 0 and pk_company_customer != null">
+            and pk_company_customer = #{pk_company_customer}
+        </if>
+        <if test="fk_company != 0 and fk_company != null">
+            and fk_company = #{fk_company}
+        </if>
+    </sql>
+
+    <sql id="selectCompanyCustomer">
+        select tcc.pk_company_customer,
+       tcc.fk_company,
+       tcc.fd_customer_name,
+       tcc.fd_active_state,
+       tcc.fd_company_name fd_company_name,
+       tcc.fd_company_dept    fd_dept_name,
+       tcc.fd_company_position,
+       tcc.fd_customer_mobile fd_customer_mobile,
+       tcc.fd_customer_email,
+       tcc.fd_customer_kakao_uid,
+       tcc.fd_customer_chat_uid,
+       tcc.contact_channel_from,
+       tcc.contact_date_from,
+       tc2.fd_name                                   fd_state_name,
+       tcs3.fd_staff_name                               registerer,
+       tcs3.fd_dept_name                                registererDeptName,
+       tcc.fd_regdate,
+       tc3.fd_name                                   fd_contact_channel_name,
+       tc3.pk_code                                      pkCodeContactChannel,
+       tcc.fd_additional_information,
+       tcs2.fd_staff_name                               updater,
+       tcs2.fd_dept_name                                updaterDeptName,
+       tcc.fd_moddate,
+       tcc.fd_customer_phone,
+       tcc.fd_customer_address_common,
+       tcc.fd_customer_address_detail,
+       tcc.fd_company_address_common,
+       tcc.fd_company_address_detail
+        from with_comapny_customer tcc
+    </sql>
+
+    <sql id="queryGetCompanyCustomerAppend">
+        inner join tbl_code tc2 on tcc.fd_active_state = tc2.pk_code
+        inner join tbl_code tc3 on tc3.pk_code = tcc.contact_channel_from
+        left outer join
+        (select b.pk_company_staff, b.fd_staff_name, a.fd_dept_name
+        from tbl_company_dept a inner join tbl_company_staff b
+        inner join tbl_company_dept_staff c
+        on a.pk_company_dept = c.fk_company_dept
+        and b.pk_company_staff = c.fk_company_staff
+        group by pk_company_staff
+        ) tcs2
+        on tcs2.pk_company_staff = tcc.fk_modifier
+        left outer join
+        (select b.pk_company_staff, b.fd_staff_name, a.fd_dept_name
+        from tbl_company_dept a inner join tbl_company_staff b
+        inner join tbl_company_dept_staff c
+        on a.pk_company_dept = c.fk_company_dept
+        and b.pk_company_staff = c.fk_company_staff
+        group by pk_company_staff
+        ) tcs3
+        on tcs3.pk_company_staff = tcc.fk_writer
+        where 1 = 1
+        <if test="pk_company_customer != null and pk_company_customer != ''">
+            AND UPPER(pk_company_customer)    LIKE CONCAT('%', UPPER(#{pk_company_customer}), '%')
+        </if>
+        <if test="fd_customer_name != null and fd_customer_name != ''">
+            AND UPPER(fd_customer_name)    LIKE CONCAT('%', UPPER(#{fd_customer_name}), '%')
+        </if>
+        <if test="fd_customer_phone != null and fd_customer_phone != ''">
+            AND UPPER(fd_customer_phone)    LIKE CONCAT('%', UPPER(#{fd_customer_phone}), '%')
+        </if>
+        <if test="fd_customer_mobile != null and fd_customer_mobile != ''">
+            AND UPPER(fd_customer_mobile)    LIKE CONCAT('%', UPPER(#{fd_customer_mobile}), '%')
+        </if>
+        <if test="fd_customer_email != null and fd_customer_email != ''">
+            AND UPPER(fd_customer_email)    LIKE CONCAT('%', UPPER(#{fd_customer_email}), '%')
+        </if>
+        <if test="statusesSearch != null and statusesSearch.size() > 0">
+            AND fd_active_state    in
+            <foreach item="item" index="index" collection="statusesSearch"
+                     open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="search.startDate != null and search.startDate != '' and search.endDate != null and search.endDate != ''">
+            <if test="contactDateFromSearch != null and contactDateFromSearch != ''">
+                and contact_date_from BETWEEN #{search.startDate} AND #{search.endDate}
+            </if>
+            <if test="regDateSearch != null and regDateSearch != ''">
+                and fd_regdate BETWEEN #{search.startDate} AND #{search.endDate}
+            </if>
+        </if>
+    </sql>
+
+    <select id="getById" resultType="CompanyCustomerVo" parameterType="Long">
+        SELECT * FROM tbl_company_customer WHERE pk_company_customer = #{id}
+    </select>
+    <delete id="deleteCustomers">
+        DELETE FROM tbl_company_customer
+        WHERE
+            pk_company_customer = #{pk_company_customer}
+    </delete>
+
+</mapper>

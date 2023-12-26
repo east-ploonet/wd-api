@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.issue.dao.IssueContactDao">
+
+<!--    <cache-ref namespace="com.saltlux.aice_fe.pc.issue.dao.IssueContactDao"/>-->
+    <update id="updateContactChannelCode">
+        UPDATE tbl_issue_contact
+        SET
+            fd_contact_channel_code = #{fd_contact_channel_code},
+            fd_customer_uid = #{fd_customer_uid}
+        WHERE pk_issue_contact = #{pk_issue_contact}
+    </update>
+
+    <select id="getContactsByTicket" resultType="IssueContactVo">
+        select * from tbl_issue_contact where fk_issue_ticket = #{pk_issue_ticket}
+    </select>
+
+    <select id="getContactNotMapTicket" resultType="IssueContactVo">
+        select * from tbl_issue_contact where pk_issue_contact not in
+            (select tic.pk_issue_contact from tbl_issue_contact tic , tbl_issue_ticket tit where tic.fk_issue_ticket = tit.pk_issue_ticket)
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM tbl_issue_contact
+         WHERE pk_issue_contact = #{pk_issue_contact}
+    </delete>
+
+    <delete id="deleteByTicketId">
+        DELETE FROM tbl_issue_contact
+         WHERE fk_issue_ticket = #{pk_issue_ticket}
+    </delete>
+</mapper>

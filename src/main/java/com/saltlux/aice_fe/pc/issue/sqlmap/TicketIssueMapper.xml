@@ -1,0 +1,522 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.issue.dao.TicketIssueDao">
+
+    <!--    <cache-ref namespace="com.saltlux.aice_fe.pc.issue.dao.TicketIssueDao"/>-->
+    <select id="getTicketAllCnt" resultType="int">
+        <![CDATA[
+
+
+                        ]]>
+                        SELECT
+                            count(*)
+                        FROM
+                            tbl_issue_ticket
+                        WHERE
+                            fk_assign_staff =  #{fk_assign_staff}
+</select>
+
+    <select id="getTickets" resultType="IssueTicketDTO">
+        <include refid="withIssueTicket"/>
+        SELECT A.*
+        , CASE
+        WHEN A.pk_company_customer is not null
+        THEN (SELECT tcc.fd_customer_name FROM tbl_company_customer tcc WHERE tcc.pk_company_customer = A.pk_company_customer AND tcc.fk_company = A.fk_company_contact)
+        WHEN A.pk_company_staff_customer is not null
+        THEN (SELECT tcs.fd_staff_name FROM tbl_company_staff tcs WHERE tcs.pk_company_staff = A.pk_company_staff_customer)
+        ELSE A.fdCustomerPhone
+        END AS fdCustomerName
+        , ifnull(A.fd_writer_name, A.fdStaffName) writerName
+        , B.pk_issue_dialogue
+        , B.fd_customer_uid fd_customer_uid_dialog
+        , B.fd_message
+        FROM with_issue_ticket A
+        LEFT JOIN
+        tbl_issue_dialogue B ON (B.pk_issue_dialogue = A.fk_issue_dialogue_start)
+        WHERE 1 = 1
+        <if test="pk_issue_ticket != null and pk_issue_ticket != ''">
+            AND UPPER(pkIssueTicket)    LIKE CONCAT('%', UPPER(#{pk_issue_ticket}), '%')
+        </if>
+        <include refid="queryStatementTicketIssueAppend"/>
+        <if test="search.orderBy != null  and search.orderType !=null and search.orderBy != '' and search.orderType != '' ">
+            ORDER BY ${search.orderBy} ${search.orderType}
+        </if>
+        <if test="(search.orderBy == '' and search.orderType == '') or (search.orderBy == null and search.orderType == null)">
+            ORDER BY pkIssueTicket DESC
+        </if>
+        <if test="search.pageSize !='' and search.pageSize != null and search.pageSize !=0">
+            LIMIT ${search.pageSize}
+            <if test="search.page !='' and search.page != null">
+                OFFSET ${(search.page -1) * search.pageSize}
+            </if>
+        </if>
+    </select>
+
+    <select id="getIssueTicketDetail" resultType="IssueTicketDTO">
+        <include refid="withIssueTicket"/>
+        SELECT A.*
+        , CASE
+        WHEN A.pk_company_customer is not null
+        THEN (SELECT tcc.fd_customer_name FROM tbl_company_customer tcc WHERE tcc.pk_company_customer = A.pk_company_customer AND tcc.fk_company = A.fk_company_contact)
+        WHEN A.pk_company_staff_customer is not null
+        THEN (SELECT tcs.fd_staff_name FROM tbl_company_staff tcs WHERE tcs.pk_company_staff = A.pk_company_staff_customer)
+        ELSE A.fdCustomerPhone
+        END AS fdCustomerName
+        , ifnull(A.fd_writer_name, A.fdStaffName) writerName
+        , B.pk_issue_dialogue
+        , B.fd_customer_uid fd_customer_uid_dialog
+        , B.fd_message
+        FROM with_issue_ticket A
+        LEFT JOIN
+        tbl_issue_dialogue B ON (B.pk_issue_dialogue = A.fk_issue_dialogue_start)
+        WHERE 1 = 1
+        <if test="pk_issue_ticket != null and pk_issue_ticket != ''">
+            AND pkIssueTicket = #{pk_issue_ticket}
+        </if>
+        <include refid="queryStatementTicketIssueAppend"/>
+    </select>
+
+    <select id="countTicketIssues" resultType="long">
+        <include refid="withIssueTicket"/>
+        select
+        count(*) FROM with_issue_ticket A
+        LEFT JOIN
+        tbl_issue_dialogue B ON (B.pk_issue_dialogue = A.fk_issue_dialogue_start)
+        WHERE 1 = 1
+        <if test="pk_issue_ticket != null and pk_issue_ticket != ''">
+            AND UPPER(pkIssueTicket)    LIKE CONCAT('%', UPPER(#{pk_issue_ticket}), '%')
+        </if>
+        <include refid="queryStatementTicketIssueAppend"/>
+    </select>
+
+    <sql id="withIssueTicket">
+        WITH with_issue_ticket AS (
+        SELECT tit.pk_issue_ticket pkIssueTicket,
+               tit.fd_ticket_title fdTicketTitle,
+               tit.fd_regdate registeredDate,
+               tit.fd_ticket_limit_date fdDueDate,
+               tit.fd_ticket_workflow_code workFlowCode,
+               tit.fk_issue_dialogue_start,
+               tit.fk_assign_staff,
+               tit.fd_comment fdComment,
+               tit.customer_ani customerAni,
+               tit.fk_priority,
+               tit.fd_ticket_status_code,
+               tit.fd_ticket_createdate,
+               tic.fd_contact_channel_code pkCode,
+               tic.fk_company fk_company_contact,
+               tic.fd_customer_uid fdCustomerPhone,
+               tic.pk_issue_contact pkIssueContact
+             , (SELECT tc.fd_name from tbl_code tc WHERE tc.pk_code = tic.fd_contact_channel_code) AS fdContactChannelName
+             , (SELECT tc2.fd_name from tbl_code tc2 WHERE tc2.pk_code = fk_priority) AS priority
+             , (SELECT tc3.fd_name FROM tbl_code tc3 WHERE tc3.pk_code = fd_ticket_workflow_code) AS fdTicketStatusCodeName
+             , (SELECT tcc2.pk_company_customer
+                FROM tbl_company_customer tcc2 WHERE (tcc2.fd_customer_mobile = fd_customer_uid or tcc2.fd_customer_phone = fd_customer_uid)
+                AND tcc2.fk_company = tic.fk_company
+                GROUP BY pk_issue_ticket) AS pk_company_customer
+             ,(SELECT count(tic2.pk_issue_contact)
+                from tbl_issue_contact tic2
+                where pk_issue_ticket = tic2.fk_issue_ticket) AS cntContact
+             , (select a.fd_staff_name
+                from tbl_company_staff a
+                inner join tbl_issue_contact c on c.fk_company = a.fk_company
+                where c.fk_issue_ticket = pk_issue_ticket and a.fd_staff_ai_yn = 'Y'
+                group by fk_issue_ticket) as aiName
+             , (select a.fd_staff_name
+                from tbl_company_staff a
+                where a.pk_company_staff = tit.fk_writer) as fd_writer_name
+             , (SELECT COUNT(b.pk_issue_dialogue)
+                FROM tbl_issue_contact a
+                LEFT JOIN tbl_issue_dialogue b ON b.fk_issue_contact=a.pk_issue_contact
+                WHERE a.fk_issue_ticket=pk_issue_ticket AND (b.fd_message != '' and b.fd_message is not null)
+                GROUP BY a.fk_issue_ticket) AS cntDialog
+             , (SELECT fd_staff_name
+                FROM tbl_company_staff
+                WHERE pk_company_staff = fk_assign_staff) AS fdStaffName
+             , (SELECT cc.pk_company_staff
+                FROM tbl_company_staff cc
+                WHERE tic.fd_customer_uid = cc.fd_staff_mobile
+                AND cc.fd_staff_ai_yn = 'N'
+                AND cc.fk_company = tic.fk_company
+                LIMIT 1) AS pk_company_staff_customer
+            FROM tbl_issue_ticket tit
+                LEFT JOIN tbl_issue_contact tic ON tic.fk_issue_ticket = tit.pk_issue_ticket
+        )
+    </sql>
+
+	<sql id="queryStatementTicketIssueAppend">
+	  <if test="fk_company_staff != null and fk_company_staff != ''">
+	      AND fk_company_contact = #{fk_company_staff}
+	  </if>
+	  <if test="fkAssignStaffIds != null and fkAssignStaffIds != ''">
+	      and fk_assign_staff in
+	      <foreach item="item" index="index" collection="fkAssignStaffIds"
+	               open="(" separator="," close=")">
+	          #{item}
+	      </foreach>
+	  </if>
+	  <if test="search.searchStatus != null and search.searchStatus != ''">
+	      and workFlowCode = #{search.searchStatus}
+	  </if>
+	  <if test="workflow != null and workflow != ''">
+	      and workFlowCode = #{workflow}
+	  </if>
+	  <if test="fd_ticket_title != null and fd_ticket_title != ''">
+	      AND UPPER(fdTicketTitle)    LIKE CONCAT('%', UPPER(#{fd_ticket_title}), '%')
+	  </if>
+	  <if test="fd_assign_staff_name != null and fd_assign_staff_name != ''">
+	      AND UPPER(fdStaffName)    LIKE CONCAT('%', UPPER(#{fd_assign_staff_name}), '%')
+	  </if>
+	  <if test="fd_customer_name != null and fd_customer_name != ''">
+	      AND CASE
+	      WHEN A.pk_company_customer is not null
+	      THEN (SELECT stcc.pk_company_customer FROM tbl_company_customer stcc
+	                          WHERE A.pk_company_customer = stcc.pk_company_customer
+	                          and UPPER(fd_customer_name) like CONCAT('%', UPPER(#{fd_customer_name}), '%'))
+	      WHEN A.pk_company_staff_customer is not null
+	      THEN (SELECT stcs.pk_company_staff FROM tbl_company_staff stcs
+	                          WHERE A.pk_company_staff_customer = stcs.pk_company_staff
+	                          and UPPER(fd_staff_name) like CONCAT('%', UPPER(#{fd_customer_name}), '%'))
+	      ELSE A.fdCustomerPhone like CONCAT('%', UPPER(#{fd_customer_name}), '%')
+	      END
+	  </if>
+	  <if test="ai_name != null and ai_name != ''">
+	      AND UPPER(aiName)    LIKE CONCAT('%', UPPER(#{ai_name}), '%')
+	  </if>
+	  <if test="fd_ticket_workflow_code != null and fd_ticket_workflow_code != ''">
+	      AND workFlowCode = #{fd_ticket_workflow_code}
+	  </if>
+	  <if test="fd_ticket_status_code != null and fd_ticket_status_code != ''">
+	      AND fd_ticket_status_code = #{fd_ticket_status_code}
+	  </if>
+	  <if test="pk_code_channel != null and pk_code_channel != '' and pk_code_channel != 'A1503'">
+	      AND pkCode = #{pk_code_channel}
+	  </if>
+	  <if test="pk_code_channel != null and pk_code_channel != '' and pk_code_channel == 'A1503'">
+	      AND pkCode IN ('A1503','A1504','A1505')
+	  </if>
+	  <if test="priorities != null and priorities.size() > 0">
+	      AND fk_priority    in
+	      <foreach item="item" index="index" collection="priorities"
+	               open="(" separator="," close=")">
+	          #{item}
+	      </foreach>
+	  </if>
+	  <if test="search.startDate != null and search.startDate != '' and search.endDate != null and search.endDate != ''">
+	      and fd_ticket_createdate BETWEEN #{search.startDate} AND #{search.endDate}
+	  </if>
+	</sql>
+
+    <select id="getTicketDialogueList" resultType="IssueDialogueVo">
+        WITH with_issue_contact AS (
+        SELECT pk_issue_contact
+        ,fd_contact_channel_code
+        ,fk_company
+        FROM tbl_issue_contact
+        WHERE 1=1
+        AND fk_issue_ticket = #{pk_issue_ticket}
+        <if test="search.searchString !='' and search.searchString != null">
+            <choose>
+                <when test="search.searchColumn eq 'fk_issue_ticket'">
+                    fk_issue_ticket = CAST(#{search.searchString} AS INTEGER)
+                </when>
+            </choose>
+        </if>
+        )
+        , with_company_staff_ai_uid AS (
+        SELECT fd_staff_ai_uid
+        FROM tbl_company_staff
+        WHERE fk_company = (SELECT fk_company FROM with_issue_contact)
+        AND fd_staff_ai_yn = 'Y'
+        limit 1
+        )
+        <![CDATA[
+        SELECT
+                A.pk_issue_dialogue
+                ,A.fk_issue_contact
+                ,A.fk_company_staff
+                ,A.fd_customer_uid
+                ,A.fd_call_broker_id
+                ,A.fd_dialogue_status_code
+                ,regexp_replace( A.fd_message, '<br>|<br/>', '\n' ) fd_message
+                ,A.fd_regdate
+                ,A.fd_dialogue_message_code
+                ,A.fd_read_yn
+                ,A.fk_company_customer
+                ,B.fd_contact_channel_code
+                ,C.fd_customer_name
+                ,(SELECT fd_staff_ai_uid FROM with_company_staff_ai_uid) AS fd_staff_ai_uid
+        FROM    tbl_issue_dialogue A
+                    INNER JOIN
+                with_issue_contact B ON (B.pk_issue_contact=A.fk_issue_contact)
+                    LEFT JOIN
+                tbl_company_customer C ON (C.pk_company_customer = A.fk_company_customer)
+                    WHERE A.fd_message != '' or A.fd_message is not null
+        ORDER BY pk_issue_dialogue
+        ]]>
+    </select>
+
+    <update id="updateTicketDialogueRead">
+        UPDATE  tbl_issue_dialogue
+        SET     fd_read_yn='Y'
+        WHERE   fk_issue_contact IN (
+                    SELECT  pk_issue_contact
+                    FROM    tbl_issue_contact
+                    WHERE   fk_issue_ticket = #{pk_issue_ticket}
+                )
+    </update>
+
+    <select id="getTicketDialogueCustomer" resultType="CompanyCustomerVo">
+        WITH with_issue_contact_channel AS (
+            SELECT  A.fd_contact_channel_code
+                    , B.fd_name AS fd_contact_channel_name
+            FROM    tbl_issue_contact A
+                        LEFT JOIN
+                    tbl_code B ON (B.pk_code = A.fd_contact_channel_code)
+            WHERE   A.fk_issue_ticket = #{pk_issue_ticket}
+            ORDER BY A.pk_issue_contact
+            limit 1
+        )
+        SELECT
+            C.*
+             , E.fd_company_logo_file_path
+             , B.fd_customer_uid
+             , A.fd_ticket_workflow_code
+             , (SELECT fd_contact_channel_code FROM with_issue_contact_channel) AS fd_contact_channel_code
+             , (SELECT fd_contact_channel_name FROM with_issue_contact_channel) AS fd_contact_channel_name
+        FROM
+            tbl_issue_ticket A
+                LEFT JOIN
+            tbl_issue_dialogue B ON (B.pk_issue_dialogue = A.fk_issue_dialogue_start)
+                LEFT JOIN
+            tbl_company_customer C ON (C.pk_company_customer = B.fd_customer_uid)
+                LEFT JOIN
+            tbl_issue_contact D ON (D.fk_issue_ticket = A.pk_issue_ticket)
+                LEFT JOIN
+            tbl_company E ON (E.pk_company = D.fk_company)
+        WHERE
+            pk_issue_ticket =  #{pk_issue_ticket}
+    </select>
+
+    <select id="getTicketIssueCustomerByCustomer" resultType="TicketIssueCustomerDTO">
+        with with_issue_ticket as (
+        select * from tbl_issue_ticket where 1 = 1 and pk_issue_ticket = #{pk_issue_ticket}
+    )
+    select CASE WHEN cc.fk_company = bb.fk_company THEN cc.fd_customer_name ELSE bb.fd_customer_uid END AS fdCustomerName
+    , cc.fd_customer_email fdCustomerEmail
+    , cc.fd_customer_mobile fdCustomerPhone
+    , cc.pk_company_customer fkCompanyCustomer
+    , cc.fd_customer_address_common fdCustomerAddressBasic
+    , cc.fd_customer_address_detail fdCustomerAddressDetail
+    , cc.fd_additional_information fdAdditionalInformation
+    , cc.fd_company_address_common fdAddressCommon
+    , cc.fd_company_address_detail fdAddressDetail
+    , cc.fd_company_name fdCompanyName
+    , cc.fd_customer_phone fdCompanyPhone
+    , cc.fd_company_dept fdCompanyDepartment
+    , cc.fd_company_position fdCompanyPosition
+    , bb.pk_issue_contact pkIssueContact
+    , aa.fd_ticket_workflow_code fdTicketWorkflowCode
+        from with_issue_ticket aa
+         inner join tbl_issue_contact bb
+                    on aa.pk_issue_ticket = bb.fk_issue_ticket
+         inner join tbl_company_customer cc
+                    on (
+                            cc.fd_customer_mobile = bb.fd_customer_uid
+                            or
+                            cc.fd_customer_phone = bb.fd_customer_uid
+                        )
+                    and cc.fk_company = #{fk_company_staff}
+        group by aa.pk_issue_ticket
+    </select>
+
+    <select id="getTicketIssueCustomerByStaff" resultType="TicketIssueCustomerDTO">
+        with with_issue_ticket as (
+        select * from tbl_issue_ticket where 1 = 1 and pk_issue_ticket = #{pk_issue_ticket}
+    )
+    select cc.fd_staff_name      fdCustomerName
+     , cc.fd_staff_email     fdCustomerEmail
+     , cc.fd_staff_phone     fdCustomerPhone
+     , cc.pk_company_staff   fkCompanyCustomer
+     , cc.fd_address_common  fdCustomerAddressBasic
+     , cc.fd_address_detail  fdCustomerAddressDetail
+     , cc.fd_address_zipcode fdAdditionalInformation
+     , dd.fd_company_name    fdCompanyName
+     , dd.fd_company_phone   fdCompanyPhone
+     , cc.fd_staff_duty      fdCompanyPosition
+     , ee.fd_dept_name       fdCompanyDepartment
+     , ee.pk_company_dept    pkCompanyDept
+     , bb.pk_issue_contact   pkIssueContact
+     , aa.fd_ticket_workflow_code fdTicketWorkflowCode
+    from with_issue_ticket aa, tbl_company_staff cc, tbl_issue_contact bb, tbl_company dd
+    inner join
+    (SELECT tcd.fd_dept_name, tcd.pk_company_dept, tcds.fk_company_staff, tcd.fk_company
+        FROM tbl_company_dept_staff tcds
+                 INNER JOIN
+             tbl_company_dept tcd ON (tcd.pk_company_dept = tcds.fk_company_dept)
+        ORDER BY tcds.fk_company_dept ASC
+    ) AS ee
+    where ee.fk_company_staff = cc.pk_company_staff
+      and ee.fk_company = cc.fk_company
+      and cc.fd_staff_mobile = bb.fd_customer_uid
+      and aa.pk_issue_ticket = bb.fk_issue_ticket
+      and dd.pk_company = cc.fk_company
+      and cc.fd_staff_ai_yn = 'N'
+    and cc.fk_company = #{fk_company_staff}
+    LIMIT 1;
+    </select>
+
+    <select id="getTicketInfoBasic" resultType="TicketIssueCustomerDTO">
+        select tic.fd_customer_uid fdCustomerPhone, tic.pk_issue_contact pkIssueContact, tit.fd_ticket_workflow_code fdTicketWorkflowCode
+        from tbl_issue_ticket tit, tbl_issue_contact tic
+        where tic.fk_issue_ticket = tit.pk_issue_ticket and tit.pk_issue_ticket = #{pk_issue_ticket}
+    </select>
+
+    <select id="getIssueDialogueDetail" resultType="IssueDialogueDetailVo">
+        WITH with_issue_contact_channel AS (
+            SELECT  B.fd_name
+            FROM    tbl_issue_contact A
+                        LEFT JOIN
+                    tbl_code B ON (B.pk_code = A.fd_contact_channel_code)
+            WHERE   A.fk_issue_ticket = #{pk_issue_ticket}
+            ORDER BY A.pk_issue_contact
+            limit 1
+        ),
+        with_issue_contact_cnt AS (
+            SELECT  COUNT(A.fk_issue_ticket) cnt
+            FROM    tbl_issue_contact A
+            WHERE   A.fk_issue_ticket = #{pk_issue_ticket}
+        ),
+        with_issue_dialogue_cnt AS (
+            SELECT  COUNT(B.fk_issue_contact) cnt
+            FROM    tbl_issue_contact A
+                        LEFT JOIN
+                    tbl_issue_dialogue B ON (B.fk_issue_contact = A.pk_issue_contact)
+            WHERE   A.fk_issue_ticket = #{pk_issue_ticket}
+        ),
+        with_dept_name AS (
+            SELECT  C.fd_dept_name
+            FROM    tbl_issue_ticket A
+                        LEFT JOIN
+                    tbl_company_dept_staff B ON (B.fk_company_staff = A.fk_assign_staff)
+                        LEFT JOIN
+                    tbl_company_dept C ON (C.pk_company_dept = B.fk_company_dept)
+            WHERE   A.pk_issue_ticket = #{pk_issue_ticket}
+            ORDER BY B.fk_company_dept ASC
+            limit 1
+        )
+        , with_issue_contact_channel_list AS (
+            SELECT  group_concat(A.fd_contact_channel_code) fd_contact_channel_code_list
+                    ,group_concat(B.fd_name) fd_contact_channel_name_list
+            FROM    tbl_issue_contact A
+                        LEFT JOIN
+                    tbl_code B ON (B.pk_code = A.fd_contact_channel_code)
+            WHERE   A.fk_issue_ticket = #{pk_issue_ticket}
+            GROUP BY A.pk_issue_contact
+        )
+
+        SELECT
+            A.pk_issue_ticket
+            , A.fd_ticket_workflow_code
+            , E.fd_name AS ticket_workflow_name
+            , (SELECT fd_contact_channel_code_list FROM with_issue_contact_channel_list) AS fd_contact_channel_code_list
+            , (SELECT fd_contact_channel_name_list FROM with_issue_contact_channel_list) AS fd_contact_channel_name_list
+            , (SELECT fd_name FROM with_issue_contact_channel) AS channel_name
+            , (SELECT cnt FROM with_issue_contact_cnt) AS contact_cnt
+            , (SELECT cnt FROM with_issue_dialogue_cnt) AS dialogue_cnt
+            , ifnull(C.fd_customer_name, B.fd_customer_uid) fd_customer_name
+            , D.fd_staff_name
+            , (SELECT fd_dept_name FROM with_dept_name) AS fd_dept_name
+        FROM
+            tbl_issue_ticket A
+                LEFT JOIN
+            tbl_issue_contact B ON (B.fk_issue_ticket = A.pk_issue_ticket)
+                LEFT JOIN
+            tbl_company_customer C ON (C.pk_company_customer = B.fd_customer_uid)
+                LEFT JOIN
+            tbl_company_staff D ON (D.pk_company_staff = A.fk_assign_staff)
+                LEFT JOIN
+            tbl_code E ON (E.pk_code = A.fd_ticket_workflow_code)
+        WHERE
+            pk_issue_ticket =  #{pk_issue_ticket}
+    </select>
+
+    <update id="updateIssueTicketWorkflow">
+        UPDATE tbl_issue_ticket
+        SET
+            fd_ticket_workflow_code = #{fd_ticket_workflow_code}
+          , fk_modifier = #{fk_modifier}
+          , fd_moddate  = now()
+        WHERE pk_issue_ticket = #{pk_issue_ticket}
+    </update>
+
+    <update id="updateIssueTicketWorkflowIng">
+        UPDATE tbl_issue_ticket
+        SET
+            fd_ticket_workflow_code = 'A1302'
+          , fk_modifier = #{fk_modifier}
+          , fd_moddate  = now()
+        WHERE pk_issue_ticket = #{pk_issue_ticket}
+            AND fd_ticket_workflow_code = 'A1301'
+    </update>
+
+    <update id="updateIssueTicketStatus">
+        UPDATE tbl_issue_ticket
+        SET
+            fd_ticket_workflow_code = #{fd_ticket_workflow_code}
+          , fk_modifier = #{fk_modifier}
+          , fd_moddate  = now()
+        WHERE pk_issue_ticket = #{pk_issue_ticket}
+    </update>
+
+    <update id="updateIssueTicketPriority">
+        UPDATE tbl_issue_ticket
+        SET
+            fk_priority = #{fk_priority}
+          , fk_modifier = #{fk_modifier}
+          , fd_moddate  = now()
+        WHERE pk_issue_ticket = #{pk_issue_ticket}
+    </update>
+
+    <update id="updateIssueTicketManager">
+        UPDATE tbl_issue_ticket
+        SET
+            fk_assign_staff = #{fk_assign_staff}
+          , fk_modifier = #{fk_modifier}
+          , fd_moddate  = now()
+        WHERE pk_issue_ticket = #{pk_issue_ticket}
+    </update>
+
+    <update id="updateIssueTicketLimitDate">
+        UPDATE tbl_issue_ticket
+        SET
+            fd_ticket_limit_date = #{fd_ticket_limit_date}
+          , fk_modifier = #{fk_modifier}
+          , fd_moddate  = now()
+        WHERE pk_issue_ticket = #{pk_issue_ticket}
+    </update>
+
+    <update id="updateIssueTicket">
+        UPDATE tbl_issue_ticket
+        SET
+            fd_ticket_limit_date = #{fd_ticket_limit_date},
+            fd_ticket_workflow_code = #{fd_ticket_workflow_code},
+            fk_assign_staff = #{fk_assign_staff},
+            fd_comment = #{fd_comment},
+            fk_modifier = #{fk_modifier},
+            fk_priority = #{fk_priority},
+            fd_moddate  = now()
+        WHERE pk_issue_ticket = #{pk_issue_ticket}
+    </update>
+
+    <delete id="deleteIssueTicket">
+        DELETE FROM tbl_issue_ticket
+         WHERE
+            pk_issue_ticket = #{pk_issue_ticket}
+    </delete>
+
+    <select id="getAllTicketWithoutContact" resultType="IssueTicketVo">
+        select * from tbl_issue_ticket where pk_issue_ticket not in
+        (select tit.pk_issue_ticket from tbl_issue_contact tic , tbl_issue_ticket tit where tic.fk_issue_ticket = tit.pk_issue_ticket)
+    </select>
+</mapper>

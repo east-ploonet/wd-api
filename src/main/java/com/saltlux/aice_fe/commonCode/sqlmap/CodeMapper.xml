@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.commonCode.dao.CodeDao">
+
+	<select id="selectCodeList" resultType="com.saltlux.aice_fe.commonCode.vo.CodeVo">
+		SELECT
+            pk_code,
+            fk_up_code,
+            fd_name,
+            fd_use_yn,
+            fd_memo,
+            fd_name
+		FROM
+			tbl_code
+		WHERE
+			1=1
+			AND fk_up_code = #{fk_up_code}
+		ORDER BY
+			fk_up_code, pk_code ASC
+	</select>
+
+	<select id="staffWorkCodeList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT
+            a.pk_code,
+            a.fk_up_code,
+            a.fd_name,
+            a.fd_use_yn,
+            a.fd_memo,
+            a.fd_name_en,
+            b.fk_staff_work_code
+		FROM
+			tbl_code a
+		LEFT OUTER JOIN 
+		(
+		 SELECT tcs.fk_staff_work_code
+		 FROM tbl_company_staff tcs
+		 WHERE tcs.fd_staff_ai_yn = 'Y'
+		 AND tcs.fk_company = #{fkCompany}
+		 AND tcs.fk_staff_work = 1
+		 GROUP BY tcs.fk_staff_work_code
+		) b
+		ON a.pk_code = b.fk_staff_work_code
+		WHERE
+			1=1
+			AND a.fk_up_code = 'CTGR1000'
+			AND a.pk_code not in ('CTGR1001','CTGR1002')
+		ORDER BY
+			a.fk_up_code, a.pk_code ASC
+	</select>
+
+	<select id="selectUseStaffWorkCodeList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+	select a.pk_code, a.fd_name
+	from tbl_code a
+	where a.pk_code in ( select  a.fk_staff_work_code
+       					  from     tbl_company_staff a
+       					  where    a.fk_company     = #{fkCompany}
+       					  and      a.fd_staff_ai_yn = 'Y'
+       					  group by a.fk_staff_work_code
+       					)
+	order by a.pk_code
+	</select>
+
+	<select id="staffWorkCtgrCodeList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT a.pk_code, a.fk_up_code, a.fd_name, a.fd_name_en, a.fd_use_yn, a.fd_memo, IF(pk_code = b.fk_code, 'Y', 'N') AS save_db
+		FROM tbl_code a
+		LEFT OUTER JOIN tbl_ojt_ai_work b
+		ON b.fk_code = a.pk_code
+		AND b.fk_staff_work_code = #{fkStaffWorkCode}
+		AND b.fk_company = #{fkCompany}
+		WHERE a.fd_use_yn = 'Y'
+		AND a.fk_up_code='CTGR2000'
+		<choose>
+			<when test="fkStaffWorkCode == 'CTGR1003'">
+				AND a.pk_code in ('CTGR2003', 'CTGR2004', 'CTGR2005', 'CTGR2006', 'CTGR2007', 'CTGR2008', 'CTGR2009', 'CTGR2010', 'CTGR2011', 'CTGR2012', 'CTGR2013')
+			</when>
+			<when test="fkStaffWorkCode == 'CTGR1004'">
+				AND a.pk_code in ('CTGR2014', 'CTGR2015', 'CTGR2016', 'CTGR2017', 'CTGR2018')
+			</when>
+			<when test="fkStaffWorkCode == 'CTGR1006'">
+				AND a.pk_code in ('CTGR2019', 'CTGR2020')
+			</when>
+			<otherwise>AND a.pk_code in ('9999999')</otherwise>
+		</choose>
+		group by a.pk_code, a.fk_up_code, a.fd_name, a.fd_name_en, a.fd_use_yn, a.fd_memo
+	</select>
+</mapper>

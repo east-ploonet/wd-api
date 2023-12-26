@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.push.dao.PushDao">
+
+	<insert id="insertPush" useGeneratedKeys="true" keyProperty="pk_company_staff_push">
+		INSERT INTO tbl_company_staff_push(
+            fk_company_staff,
+            fk_issue_ticket,
+            fd_push_code,
+            fd_title,
+            fd_message
+		)VALUES(
+            #{fk_company_staff},
+            #{fk_issue_ticket},
+            #{fd_push_code},
+            #{fd_title},
+            #{fd_message}
+		)
+	</insert>
+
+	<update id="updatePushResult">
+		UPDATE tbl_company_staff_push
+	       SET fd_send_result = #{fd_send_result}
+	    WHERE  pk_company_staff_push = #{pk_company_staff_push}
+	</update>
+
+</mapper>

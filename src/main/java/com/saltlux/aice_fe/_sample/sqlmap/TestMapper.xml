@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe._sample.dao.TestDao">
+
+	<select id="getTestAllCnt" resultType="int">
+		SELECT
+			count(*)
+		FROM
+			tb_test
+		WHERE
+			1=1
+            <if test="search.searchString != null and !''.equals(search.searchString)">
+                <if test="search.searchColumn != null and 'fd_name'.equals(search.searchColumn)">
+                    AND fd_name like concat('%',#{search.searchString},'%')
+                </if>
+            </if>
+    </select>
+
+	<select id="getTestList" resultType="TestVo">
+		SELECT
+            pk_test,
+            fd_name,
+            fd_pw_1way,
+            fd_pw_2way,
+            fd_writer_ip,
+            fd_regdate,
+            fd_update_date
+		FROM
+			tb_test
+		WHERE
+			1=1
+            <if test="search.searchString != null and !''.equals(search.searchString)">
+                <if test="search.searchColumn != null and 'fd_name'.equals(search.searchColumn)">
+                    AND fd_name like concat('%',#{search.searchString},'%')
+                </if>
+            </if>
+		ORDER BY
+			pk_test DESC
+        <if test="search.pageSize !='' and search.pageSize != null and search.pageSize !=0">Limit ${search.pageSize}</if>
+        <if test="search.page !='' and search.page != null"> OFFSET ${(search.page -1) * search.pageSize}</if>
+	</select>
+
+	<select id="getTest" resultType="TestVo">
+		SELECT
+            pk_test,
+            fd_name,
+            fd_pw_1way,
+            fd_pw_2way,
+            fd_writer_ip,
+            fd_regdate,
+            fd_update_date
+		FROM
+			tb_test
+		WHERE
+			pk_test=#{pk_test}
+	</select>
+
+	<insert id="insertTest" useGeneratedKeys="true" keyProperty="pk_test">
+        INSERT INTO tb_test (
+        <!--pk_test, -->
+            fd_name
+          , fd_pw_1way
+          , fd_pw_2way
+          , fd_writer_ip
+        ) VALUES (
+        <!--#{pk_test}, -->
+            #{fd_name}
+          , #{fd_pw_1way}
+          , #{fd_pw_2way}
+          , #{fd_writer_ip}
+        )
+    </insert>
+
+	<update id="updateTest">
+        UPDATE tb_test
+        SET
+        	fd_name         = #{fd_name}
+          <if test="fd_pw_1way != null and fd_pw_1way !=''">
+          , fd_pw_1way      = #{fd_pw_1way}
+          </if>
+          <if test="fd_pw_2way != null and fd_pw_2way !=''">
+          , fd_pw_2way      = #{fd_pw_2way}
+          </if>
+          , fd_update_date  = now()
+        WHERE pk_test = #{pk_test}
+    </update>
+
+	<delete id="deleteTest">
+		DELETE FROM tb_test
+		WHERE  pk_test=#{pk_test}
+	</delete>
+
+	<delete id="deleteList">
+		DELETE FROM tb_test
+		WHERE  pk_test IN
+            <foreach collection="pk_list" item="item" open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+	</delete>
+
+</mapper>

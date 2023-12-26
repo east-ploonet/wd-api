@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.app.main.dao.AppMainDao">
+
+    <select id="getMyBizState" resultType="map">
+        <![CDATA[
+        ]]>
+        SELECT    A.pk_code
+                , A.fk_up_code
+                , A.fd_name
+                , A.fd_use_yn
+                , A.fd_memo
+                , B.pk_company_staff
+
+        FROM    tbl_code A
+                    LEFT JOIN
+                tbl_company_staff B ON (
+                    B.fd_staff_response_status_code = A.pk_code
+                    AND B.pk_company_staff = #{pk_company_staff}
+                )
+
+        WHERE   fk_up_code = 'A1200'
+            AND fd_use_yn = 'Y'
+
+        ORDER BY pk_code ASC
+
+    </select>
+
+    <update id="setMyBizState">
+        UPDATE tbl_company_staff
+        SET fd_staff_response_status_code   = #{fd_staff_response_status_code}
+          , fk_modifier                     = #{fk_modifier}
+          , fd_moddate                      = now()
+        WHERE pk_company_staff              = #{pk_company_staff}
+    </update>
+
+    <select id="getMyPage" resultType="CompanyStaffVo">
+        SELECT
+                A.*
+                ,C.fd_dept_name
+
+        FROM    tbl_company_staff A
+                    LEFT JOIN
+                tbl_company_dept_staff B ON (B.fk_company_staff = A.pk_company_staff)
+                    left join
+                tbl_company_dept C ON (C.pk_company_dept = B.fk_company_dept)
+
+        WHERE pk_company_staff  = #{pk_company_staff}
+
+        ORDER BY B.fk_company_dept ASC
+        limit 1
+    </select>
+
+    <update id="setStaffPushNotiYn">
+        UPDATE tbl_company_staff
+        SET fd_push_noti_yn         = #{fd_push_noti_yn}
+          , fk_modifier             = #{fk_modifier}
+          , fd_moddate              = now()
+        WHERE pk_company_staff      = #{pk_company_staff}
+    </update>
+
+</mapper>

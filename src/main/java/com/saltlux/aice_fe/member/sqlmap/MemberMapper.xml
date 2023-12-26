@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.member.dao.MemberDao">
+
+	<insert id="insertMember" useGeneratedKeys="true" keyProperty="pk_member">
+		INSERT INTO tb_member(
+            fd_member_id,
+            fd_member_pw,
+            fd_member_name,
+            fd_member_mobile,
+            fd_member_email,
+            fd_member_status_code,
+            fd_member_status_date,
+            fd_signup_date
+		)VALUES(
+            #{fd_member_id},
+            #{fd_member_pw},
+            #{fd_member_name},
+            #{fd_member_mobile},
+            #{fd_member_email},
+            #{fd_member_status_code},
+            now(),
+            now()
+		)
+	</insert>
+
+	<select id="getMember" resultType="MemberVo">
+		SELECT
+            pk_member,
+            fd_member_id,
+            fd_member_pw,
+            fd_member_name,
+            fd_member_mobile,
+            fd_member_email,
+            fd_member_status_code,
+            fd_member_status_date,
+            fd_signup_date,
+            fd_update_date,
+            fd_login_date
+		FROM
+			tb_member
+		WHERE
+			pk_member = #{pk_member}
+	</select>
+
+    <select id="getMemberById" resultType="MemberVo">
+        SELECT
+        	pk_member,
+			fd_member_id,
+			fd_member_pw,
+			fd_member_name,
+			fd_member_mobile,
+			fd_member_email,
+			fd_member_status_code,
+			fd_member_status_date,
+			fd_signup_date,
+			fd_update_date,
+			fd_login_date
+        FROM tb_member
+        WHERE UPPER(fd_member_id) = UPPER(#{fd_member_id})
+        limit 1
+    </select>
+
+    <select id="selectMemberList" resultType="MemberVo">
+		SELECT
+			pk_member,
+			fd_member_id,
+			fd_member_pw,
+			fd_member_name,
+			fd_member_mobile,
+			fd_member_email,
+			fd_member_status_code,
+			fd_member_status_date,
+			fd_signup_date,
+			fd_update_date,
+			fd_login_date
+		FROM
+			tb_member
+		WHERE
+		    1=1
+	    LIMIT #{pageSize} OFFSET #{offset}
+	</select>
+
+    <select id="selectMemberCount" resultType="int">
+		SELECT
+			COUNT(*)
+		FROM
+			tb_member
+		WHERE
+		    1=1
+	</select>
+
+    <update id="updateMember">
+        UPDATE tb_member
+		SET
+        <if test="fd_member_pw != null and !''.equals(fd_member_pw)">
+            fd_member_pw    = #{fd_member_pw},
+        </if>
+        <if test="fd_member_name != null and !''.equals(fd_member_name)">
+            fd_member_name	= #{fd_member_name},
+        </if>
+        <if test="fd_member_mobile != null and !''.equals(fd_member_mobile)">
+            fd_member_mobile= #{fd_member_mobile},
+        </if>
+        <if test="fd_member_email != null and !''.equals(fd_member_email)">
+            fd_member_email	= #{fd_member_email},
+        </if>
+        <if test="fd_member_status_code != null and !''.equals(fd_member_status_code)">
+            fd_member_status_code   = #{fd_member_status_code},
+            fd_member_status_date	= now(),
+        </if>
+            fd_update_date	= now()
+         WHERE pk_member  = #{pk_member}
+    </update>
+
+	<update id="updatePw">
+		UPDATE tb_member
+	       SET fd_member_pw = #{fd_member_pw}
+	    WHERE  pk_member    = #{pk_member}
+	</update>
+
+    <update id="dropMember">
+        UPDATE tb_member
+	       SET  fd_member_status_code   = '1002'
+	     WHERE  pk_member               = #{pk_member}
+	</update>
+
+    <delete id="deleteMember">
+		DELETE FROM tb_member
+		WHERE  pk_member           = #{pk_member}
+	</delete>
+</mapper>

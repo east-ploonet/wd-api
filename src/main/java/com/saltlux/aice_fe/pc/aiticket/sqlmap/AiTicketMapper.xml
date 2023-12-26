@@ -1,0 +1,1208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.aiticket.dao.AiTicketDao">
+
+	
+	<select id="getList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select sa.*,
+	         d.disp_name as fd_name ,
+	         e.fd_name as channel,
+	         DATE_FORMAT(DATE_SUB(sa.order_date1, INTERVAL 9 HOUR), '%Y-%m-%d %H:%i:%s') order_date
+		from (
+		select 
+			a.ani,
+			a.tb_broker_id,
+			a.fd_customer_uid,
+			DATE_FORMAT(DATE_SUB(a.fd_regdate, INTERVAL 9 HOUR), '%Y-%m-%d %H:%i:%s')  fd_regdate,
+			a.pk_issue_contact,
+			a.msg_title,
+            a.fk_company,
+            b.ai_work_cd,
+            a.fd_contact_channel_code,
+            case when a.fd_regdate is not null then a.fd_regdate else a.call_dt_from end order_date1,
+            a.caller_name,
+			a.fk_issue_ticket
+		from (
+		select ani,
+			fd_customer_uid,
+			fd_regdate,
+			pk_issue_contact,
+			msg_title,
+            fk_company,
+            fd_contact_channel_code,
+            fk_company_staff_ai,
+            fd_moddate,
+            call_dt_from,
+            caller_name,
+            tb_broker_id,
+			fk_issue_ticket
+		from tbl_issue_contact
+		where fk_company = #{fkCompany}
+			and ( tb_broker_id is not null and tb_broker_id != '0000' )
+			and (fk_issue_contact_parent is null or fk_issue_contact_parent = '')
+			and svc_type &lt;&gt; 'OJT_INTERVIEW'
+		) AS a
+		left join 
+		(select * from tbl_ai_conf_work where p_ai_work_cd is null and fk_company = #{fkCompany})		
+		AS b 
+		on a.fk_company_staff_ai = b.fk_company_staff_ai 
+        
+        where 1=1
+        <if test="pkIssueContact !='' and pkIssueContact != null">
+			and a.pk_issue_contact like CONCAT('%', #{pkIssueContact}, '%')
+		</if>
+		<if test="startDate !='' and startDate != null and endDate != '' and endDate != null">
+			and DATE(a.fd_regdate) BETWEEN #{startDate} and #{endDate}
+		</if>
+		<if test="searchType !='' and searchType != null">
+			and b.ai_work_cd like CONCAT('%', #{searchType}, '%')
+		</if>
+		<if test='searchCallerName != null and searchCallerName != ""'>
+			and a.caller_name like CONCAT('%', #{searchCallerName}, '%')
+		</if>
+		<if test='searchCustomerInfo != null and searchCustomerInfo != ""'>
+			and (
+				a.fd_customer_uid like CONCAT('%', #{searchCustomerInfo}, '%')
+			)
+		</if>
+        group by pk_issue_contact
+		ORDER BY (case when a.fd_regdate is not null then a.fd_regdate else a.call_dt_from end) desc
+		LIMIT #{offset}, #{pageSize}
+        ) sa
+        
+		left join tbl_ai_policy_work AS d
+		on sa.ai_work_cd = d.ai_work_cd
+		left join tbl_code AS e
+		on sa.fd_contact_channel_code = e.pk_code
+		
+		where 1 = 1 
+        group by sa.pk_issue_contact
+        order by sa.order_date1 desc
+	</select>
+	
+	<select id="getView" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select sa.*,
+			c.fd_staff_name as callerStaffName, c.fd_staff_mobile as callerStaffMobile, c.fd_staff_email as callerStaffEmail,
+			d.disp_name as fd_name ,
+			e.fd_name as channel,
+			
+			g.fd_company_name,
+			h.fd_customer_name as customerName, h.fd_customer_mobile as customerMobile, h.fd_customer_mobile as customerEmail,
+			h.fd_company_name as customerCompany
+		from (
+		select 
+			a.*, b.ai_work_cd ,
+            f.fd_staff_name,
+            case when a.fd_regdate is not null then a.fd_regdate else a.call_dt_from end order_date
+		from (
+		select * 
+		from tbl_issue_contact
+		where fk_company = #{fkCompany}
+			and ( tb_broker_id is not null and tb_broker_id != '0000' )
+			and (fk_issue_contact_parent is null or fk_issue_contact_parent = '')
+			and svc_type &lt;&gt; 'OJT_INTERVIEW'
+		) AS a
+		left join 
+		(select * from tbl_ai_conf_work where p_ai_work_cd is null and fk_company = #{fkCompany})		
+		AS b 
+		on ( a.fk_company_staff_ai = b.fk_company_staff_ai )
+        left join tbl_company_staff As f
+		on f.pk_company_staff = b.fk_company_staff_ai
+        and f.fk_company = #{fkCompany}
+        where 1=1
+        <if test="pkIssueContact !='' and pkIssueContact != null">
+			and a.pk_issue_contact like CONCAT('%', #{pkIssueContact}, '%')
+		</if>
+		<if test="startDate !='' and startDate != null and endDate != '' and endDate != null">
+			and DATE(a.fd_regdate) BETWEEN #{startDate} and #{endDate}
+		</if>
+        group by pk_issue_contact
+        ) sa
+        
+		left join tbl_company_staff AS c
+		on ( sa.fd_customer_uid = c.fd_staff_mobile or sa.fd_customer_uid = c.fd_staff_phone)
+		and c.fk_company = #{fkCompany}
+		left join tbl_ai_policy_work AS d
+		on sa.ai_work_cd = d.ai_work_cd
+		left join tbl_code AS e
+		on sa.fd_contact_channel_code = e.pk_code
+		
+		left join tbl_company AS g
+		on g.pk_company = #{fkCompany}
+		left join tbl_company_customer AS h
+		on ( sa.fd_customer_uid = h.fd_customer_mobile or sa.fd_customer_uid = h.fd_customer_phone)
+		and h.fk_company = #{fkCompany}
+		where 1 = 1 
+        group by sa.pk_issue_contact
+	</select>
+	
+	<select id="getListDue" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select sa.*,
+	         d.disp_name as fd_name ,
+	         e.fd_name as channel,
+	         DATE_FORMAT(DATE_SUB(sa.order_date1, INTERVAL 9 HOUR), '%Y-%m-%d %H:%i:%s') order_date
+		from (
+		select 
+			a.ani,
+			a.fd_customer_uid,
+			DATE_FORMAT(DATE_SUB(a.fd_regdate, INTERVAL 9 HOUR), '%Y-%m-%d %H:%i:%s')  fd_regdate,
+			a.pk_issue_contact,
+			a.msg_title,
+            a.fk_company,
+            b.ai_work_cd,
+            a.fd_contact_channel_code,
+            case when a.fd_regdate is not null then a.fd_regdate else a.call_dt_from end order_date1,
+            a.caller_name
+		from (
+		select ani,
+			fd_customer_uid,
+			fd_regdate,
+			pk_issue_contact,
+			msg_title,
+            fk_company,
+            fd_contact_channel_code,
+            fk_company_staff_ai,
+            fd_moddate,
+            call_dt_from,
+            caller_name
+		from tbl_issue_contact
+		where fk_company = #{fkCompany}
+			and ( tb_broker_id is not null and tb_broker_id != '0000' )
+			and (fk_issue_contact_parent is null or fk_issue_contact_parent = '')
+			and svc_type &lt;&gt; 'OJT_INTERVIEW'
+			<if test='startDate == null or startDate == ""'>
+              and DATE(fd_regdate) > DATE_SUB(NOW(), INTERVAL 3 MONTH)
+             </if>
+		) AS a
+		left join 
+		(select * from tbl_ai_conf_work where p_ai_work_cd is null and fk_company = #{fkCompany})		
+		AS b 
+		on a.fk_company_staff_ai = b.fk_company_staff_ai 
+        
+        where 1=1
+       
+		<if test="startDate !='' and startDate != null and endDate != '' and endDate != null">
+			and DATE(a.fd_regdate) BETWEEN #{startDate} and #{endDate}
+		</if>
+		<if test="searchType !='' and searchType != null">
+			and b.ai_work_cd like CONCAT('%', #{searchType}, '%')
+		</if>
+        group by pk_issue_contact
+		ORDER BY (case when a.fd_regdate is not null then a.fd_regdate else a.call_dt_from end) desc
+        ) sa
+        
+		left join tbl_ai_policy_work AS d
+		on sa.ai_work_cd = d.ai_work_cd
+		left join tbl_code AS e
+		on sa.fd_contact_channel_code = e.pk_code
+		
+		where 1 = 1 
+        group by sa.pk_issue_contact
+        order by sa.order_date1 desc
+		
+	</select>
+		
+	<select id="getListCnt" resultType="Integer">
+		select count(distinct(sa.pk_issue_contact)) as cnt
+		from (
+    	select 
+			a.pk_issue_contact
+    	from (
+		select * 
+		from tbl_issue_contact
+			where fk_company = #{fkCompany}
+			and ( tb_broker_id is not null and tb_broker_id != '0000' ) 
+			and (fk_issue_contact_parent is null or fk_issue_contact_parent = '')
+		<if test="pkIssueContact !='' and pkIssueContact != null">
+			and pk_issue_contact like CONCAT('%', #{pkIssueContact}, '%')
+		</if>
+		<if test="startDate !='' and startDate != null and endDate != '' and endDate != null">
+			and DATE(fd_regdate) BETWEEN #{startDate} and #{endDate}
+		</if>
+		<if test='searchCallerName != null and searchCallerName != ""'>
+			and caller_name like CONCAT('%', #{searchCallerName}, '%')
+		</if>
+		<if test='searchCustomerInfo != null and searchCustomerInfo != ""'>
+			and (
+				fd_customer_uid like CONCAT('%', #{searchCustomerInfo}, '%')
+			)
+		</if>
+			and svc_type &lt;&gt; 'OJT_INTERVIEW'
+		) AS a
+		<if test="(searchAiName !='' and searchAiName != null) || (searchType !='' and searchType != null)">
+		left join 
+		(select * from tbl_ai_conf_work where p_ai_work_cd is null)		
+		AS b 
+		on ( a.fk_company_staff_ai = b.fk_company_staff_ai )
+		and b.fk_company = a.fk_company
+		left join tbl_company_staff As f
+		on f.fk_company = a.fk_company
+		and f.pk_company_staff = b.fk_company_staff_ai
+		where 1 = 1
+			<if test="searchAiName !='' and searchAiName != null">
+				and f.fd_staff_name like CONCAT('%', #{searchAiName}, '%')
+			</if>
+			<if test="searchType !='' and searchType != null">
+				and b.ai_work_cd like CONCAT('%', #{searchType}, '%')
+			</if>
+		</if>
+		) sa
+    </select>
+
+    
+<!--     <select id="getDialogue" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap"> -->
+<!--     	select *, -->
+<!--   	    	( -->
+<!--     		SELECT count(1) FROM tbl_issue_dialogue B -->
+<!--     		WHERE B.fk_issue_contact = #{pkIssueContact}  -->
+<!--     		and ( B.fd_message is not null or B.fd_message != "" ) -->
+<!--     		) as dialogueNum, -->
+<!--     		( -->
+<!--     		SELECT count(1) FROM tbl_issue_contact C -->
+<!--     		WHERE C.pk_issue_contact = #{pkIssueContact}  -->
+<!--     		) as contactNum -->
+<!-- 		from -->
+<!-- 		    tbl_issue_dialogue a -->
+<!-- 			, tbl_issue_contact b -->
+<!-- 		where  -->
+<!-- 			a.fk_issue_contact = #{pkIssueContact} -->
+<!-- 			and a.fk_issue_contact = b.pk_issue_contact -->
+<!-- 			and (a.fd_call_broker_id != "" or b.tb_broker_id != "") -->
+<!-- 		order by -->
+<!-- 		    a.fd_regdate -->
+<!--     </select> -->
+
+    <select id="getDialogue" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+    	SELECT DISTINCT a.*,
+		    (
+		    SELECT count(1) FROM tbl_issue_dialogue B
+		    WHERE B.fd_call_broker_id = #{fdCallBrokerId}
+		    and ( B.fd_message is not null or B.fd_message != "" )
+		    ) as dialogueNum,
+		    (
+		    SELECT count(1) FROM tbl_issue_contact C
+		    WHERE C.tb_broker_id = #{fdCallBrokerId}
+		    ) as contactNum
+		FROM tbl_issue_dialogue a
+		INNER JOIN tbl_issue_contact b
+		ON a.fd_call_broker_id = b.tb_broker_id
+		WHERE
+		    a.fd_call_broker_id = #{fdCallBrokerId}
+		    and a.fd_call_broker_id != ""
+		ORDER BY a.pk_issue_dialogue;
+    </select>
+    
+    <select id="getAiTypeList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+    	select ai_work_cd, disp_name 
+    	from tbl_ai_policy_work
+    	where p_ai_work_cd is null
+    </select>
+    
+    <select id="getNewTicketList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+	    select sa.*,
+	       d.disp_name as fd_name ,
+	       e.fd_name  as channel,
+	       h.fd_name  as priority,
+	       j.fd_name  as status,
+	       jj.fd_name as ticketStatus
+		from   ( select  a.*,
+			               b.ai_work_cd ,
+			               g.fd_ticket_title,
+			               g.fk_priority,
+			               g.fd_ticket_workflow_code,
+			               g.fd_ticket_limit_date,
+			               g.pk_issue_ticket,
+			               g.fd_comment,
+			               g.fd_ticket_createdate,
+			               i.fd_staff_name as assignStaff,
+			               case when a.fd_regdate is not null then a.fd_regdate else g.fd_ticket_createdate end order_date 
+		       from     ( select 
+		       					pk_issue_contact,
+		       					caller_name,
+		                        fd_customer_uid,
+		                        fd_regdate,
+		                        call_dt_from,
+		                        fk_issue_ticket,
+		                        caller_type,
+		                        ani,
+		                        fk_company_staff_ai,
+		                        fk_company,
+		                        fd_contact_channel_code,
+		                        fd_contact_status_code,
+		                        tb_broker_id
+		                from    tbl_issue_contact
+		                where   fk_company                = #{fkCompany}
+		                and     fk_issue_ticket is not null
+		                and     tb_broker_id          != '0000'
+		                and		tb_broker_id is not null
+		                and
+		                        (
+		                                fk_issue_contact_parent is null or fk_issue_contact_parent = ''
+		                        )
+		                        
+		                )
+		                AS a
+		                left join
+		                         (select ai_work_cd,
+		                                 fk_company_staff_ai
+		                         from    tbl_ai_conf_work
+		                         where   p_ai_work_cd is null
+		                         and fk_company = #{fkCompany}
+		                         )
+		                         AS b
+		                on       a.fk_company_staff_ai = b.fk_company_staff_ai
+		                left join tbl_issue_ticket AS g
+		                on       g.fk_company = #{fkCompany}
+		                and a.fk_issue_ticket = g.pk_issue_ticket
+		                left join tbl_company_staff AS i
+				         on       i.fk_company = #{fkCompany}
+				         and      g.fk_assign_staff = i.pk_company_staff
+		       where    1                     = 1
+		       	<if test='startDate != null and startDate != ""'>
+		       		and g.fd_ticket_createdate BETWEEN STR_TO_DATE(concat(#{startDate} , ' 00:00:00'), '%Y-%m-%d %T') AND STR_TO_DATE(concat(#{endDate} , ' 23:59:59'), '%Y-%m-%d %T')
+			    </if>
+			    <if test='pkIssueTicket != null and pkIssueTicket != ""'>
+			        and g.pk_issue_ticket = #{pkIssueTicket}
+			    </if>
+			    <if test='loginStaffPk != null and loginStaffPk != ""'>
+			        and g.fk_assign_staff =#{loginStaffPk}
+			    </if>
+			    <if test='searchType != null and searchType != ""'>
+			        and b.ai_work_cd like CONCAT('%', #{searchType}, '%')
+			    </if>
+				<if test='searchCallerName != null and searchCallerName != ""'>
+					and a.caller_name like CONCAT('%', #{searchCallerName}, '%')
+				</if>
+			    <if test='searchCustomerInfo != null and searchCustomerInfo != ""'>
+			        and (
+			            a.fd_customer_uid like CONCAT('%', #{searchCustomerInfo}, '%')
+			        )
+			    </if>
+			    <if test='searchWorkflow != null and searchWorkflow != ""'>
+			        and g.fd_ticket_workflow_code = #{searchWorkflow}
+			    </if>
+			     <if test='searchStaff != null and searchStaff != ""'>
+			        and i.fd_staff_name = #{searchStaff}
+			    </if>
+			    <if test="searchTypeList != null">
+			        AND g.fk_priority in
+			        <foreach item="item" index="index" collection="searchTypeList"
+			                    open="(" separator="," close=")">
+			            #{item}
+			        </foreach>
+			    </if>
+		       group by a.fk_issue_ticket
+		       ORDER BY (case when g.fd_ticket_createdate is not null then g.fd_ticket_createdate else a.fd_regdate end) desc
+         
+		       LIMIT    #{offset}, #{pageSize}
+		       )
+		       sa
+		       left join tbl_ai_policy_work AS d
+				on sa.ai_work_cd = d.ai_work_cd
+		       left join tbl_code AS e
+		       on     sa.fd_contact_channel_code = e.pk_code
+		       left join tbl_code AS h
+		       on     sa.fk_priority = h.pk_code
+		       left join tbl_code AS j
+		       on     sa.fd_contact_status_code = j.pk_code
+		       left join tbl_code AS jj
+		       on     sa.fd_ticket_workflow_code = jj.pk_code
+		where  1                                 =1
+		order by sa.order_date desc
+	</select>
+    
+    <select id="getTicketList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select 
+			a.*, 
+			b.ai_work_cd ,
+			c.fd_staff_name as callerStaffName, c.fd_staff_mobile as callerStaffMobile, c.fd_staff_email as callerStaffEmail, 
+			d.fd_name ,
+			e.fd_name as channel,
+			f.fd_staff_name,
+			g.fd_ticket_title, g.fk_priority, g.fd_ticket_workflow_code, g.fd_ticket_limit_date, g.pk_issue_ticket, g.fd_comment,
+			h.fd_name as priority,
+			i.fd_staff_name as assignStaff,
+			j.fd_name as status,
+			k.fd_customer_name as customerName, k.fd_customer_mobile as customerMobile, k.fd_customer_email as customerEmail,
+			k.fd_company_name as customerCompany,
+			jj.fd_name as ticketStatus
+		from
+		( select * 
+		from tbl_issue_contact
+			where fk_company = #{fkCompany}
+			and fk_issue_ticket is not null
+			and (fk_issue_contact_parent is null or fk_issue_contact_parent = '') 
+			and ( tb_broker_id is not null and tb_broker_id != '0000' )
+			<!-- <if test="startDate !='' and startDate != null and endDate != '' and endDate != null">
+				and DATE(fd_regdate) BETWEEN #{startDate} and #{endDate}
+			</if> -->
+		) AS a
+		left join 
+		(select * from tbl_ai_conf_work where p_ai_work_cd is null)		
+		AS b 
+		on ( a.fk_company_staff_ai = b.fk_company_staff_ai )
+		left join tbl_company_staff AS c
+		on ( a.fd_customer_uid = c.fd_staff_mobile or a.fd_customer_uid = c.fd_staff_phone)
+		and c.fk_company = a.fk_company
+		left join tbl_code AS d
+		on b.ai_work_cd = d.pk_code
+		left join tbl_code AS e
+		on a.fd_contact_channel_code = e.pk_code
+		left join tbl_company_staff AS f
+		on f.pk_company_staff = b.fk_company_staff_ai
+		and f.fk_company = a.fk_company 
+		left join tbl_issue_ticket AS g
+		on a.fk_issue_ticket = g.pk_issue_ticket
+		left join tbl_code AS h
+		on g.fk_priority = h.pk_code
+		left join tbl_company_staff AS i
+		on g.fk_assign_staff = i.pk_company_staff
+		and i.fk_company = a.fk_company 
+		left join tbl_code AS j
+		on a.fd_contact_status_code = j.pk_code
+		left join tbl_code AS jj
+		on g.fd_ticket_workflow_code = jj.pk_code
+		left join tbl_company_customer AS k
+		on ( a.fd_customer_uid = k.fd_customer_mobile or a.fd_customer_uid = k.fd_customer_phone)
+		and k.fk_company = a.fk_company
+		where 1 = 1
+		and a.pk_issue_contact = #{pkIssueContact}
+	</select>
+	
+	<select id="getTicketListDue" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select sa.*,
+	       d.disp_name as fd_name ,
+	       e.fd_name  as channel,
+	       h.fd_name  as priority,
+	       j.fd_name  as status,
+	       jj.fd_name as ticketStatus
+		from   ( select  a.*,
+			               b.ai_work_cd ,
+			               g.fd_ticket_title,
+			               g.fk_priority,
+			               g.fd_ticket_workflow_code,
+			               g.fd_ticket_limit_date,
+			               g.pk_issue_ticket,
+			               g.fd_comment,
+			               g.fd_ticket_createdate,
+			               i.fd_staff_name as assignStaff
+		       from     ( select caller_name,
+		                        fd_customer_uid,
+		                        fd_regdate,
+		                        call_dt_from,
+		                        fk_issue_ticket,
+		                        caller_type,
+		                        ani,
+		                        fk_company_staff_ai,
+		                        fk_company,
+		                        fd_contact_channel_code,
+		                        fd_contact_status_code
+		                from    tbl_issue_contact
+		                where   fk_company                = #{fkCompany}
+		                and     fk_issue_ticket is not null
+		                and
+		                        (
+		                                fk_issue_contact_parent is null or fk_issue_contact_parent = ''
+		                        )
+		                and tb_broker_id is not null
+		                and     tb_broker_id          != '0000'
+		                <if test='startDate == null or startDate == ""'>
+			                and DATE(fd_regdate) > DATE_SUB(NOW(), INTERVAL 3 MONTH)
+		                </if>
+		                )
+		                AS a
+		                left join
+		                         (select ai_work_cd,
+		                                 fk_company_staff_ai
+		                         from    tbl_ai_conf_work
+		                         where   p_ai_work_cd is null
+		                         and fk_company = #{fkCompany}
+		                         )
+		                         AS b
+		                on       a.fk_company_staff_ai = b.fk_company_staff_ai
+		                left join tbl_issue_ticket AS g
+		                on       g.fk_company = #{fkCompany}
+		                and a.fk_issue_ticket = g.pk_issue_ticket
+		                left join tbl_company_staff AS i
+				         on       i.fk_company = #{fkCompany}
+				         and      g.fk_assign_staff = i.pk_company_staff
+		       where    1                     = 1
+		       group by a.fk_issue_ticket
+		       ORDER BY a.fd_regdate desc
+		       )
+		       sa
+		       left join tbl_ai_policy_work AS d
+				on sa.ai_work_cd = d.ai_work_cd
+		       left join tbl_code AS e
+		       on     sa.fd_contact_channel_code = e.pk_code
+		       left join tbl_code AS h
+		       on     sa.fk_priority = h.pk_code
+		       left join tbl_code AS j
+		       on     sa.fd_contact_status_code = j.pk_code
+		       left join tbl_code AS jj
+		       on     sa.fd_ticket_workflow_code = jj.pk_code
+		where  1                                 =1
+		<if test='startDate != null and startDate != ""'>
+       		and sa.fd_ticket_createdate BETWEEN STR_TO_DATE(concat(#{startDate} , ' 00:00:00'), '%Y-%m-%d %T') AND STR_TO_DATE(concat(#{endDate} , ' 23:59:59'), '%Y-%m-%d %T')
+	    </if>
+	    <if test='pkIssueTicket != null and pkIssueTicket != ""'>
+	        and sa.pk_issue_ticket = #{pkIssueTicket}
+	    </if>
+	    <if test='loginStaffPk != null and loginStaffPk != ""'>
+	        and sa.fk_assign_staff =#{loginStaffPk}
+	    </if>
+	    <if test='searchType != null and searchType != ""'>
+	        and sa.ai_work_cd like CONCAT('%', #{searchType}, '%')
+	    </if>
+	    <if test='searchCustomerInfo != null and searchCustomerInfo != ""'>
+	        and (
+	            sa.fd_customer_uid like CONCAT('%', #{searchCustomerInfo}, '%')
+	        )
+	    </if>
+	    <if test='searchWorkflow != null and searchWorkflow != ""'>
+	        and sa.fd_ticket_workflow_code = #{searchWorkflow}
+	    </if>
+	     <if test='searchStaff != null and searchStaff != ""'>
+	        and sa.assignStaff = #{searchStaff}
+	    </if>
+	    <if test="searchTypeList != null">
+	        AND sa.fk_priority in
+	        <foreach item="item" index="index" collection="searchTypeList"
+	                    open="(" separator="," close=")">
+	            #{item}
+	        </foreach>
+	    </if>
+		ORDER BY sa.fd_regdate desc
+	</select>
+	
+	<sql id="selectNewTicketforCnt">
+	with WITH_NEW_TICKET_LIST AS (
+	select
+		a.pk_issue_ticket,
+		a.fd_ticket_workflow_code
+	from
+	    tbl_issue_ticket a
+	left outer join
+	    tbl_issue_contact b
+	on 1=1
+	    and b.fk_issue_ticket = a.pk_issue_ticket
+	    and (
+	        b.fk_issue_contact_parent is null
+	        or
+	        b.fk_issue_contact_parent = ''
+	    ) 
+	    and b.tb_broker_id is not null
+	    and b.tb_broker_id != ''
+	    and b.tb_broker_id != '0000'
+	    and b.channel_cd in ('B1011','B1012')
+	left outer join
+	    tbl_ai_conf_work c
+	on 1=1
+	    and c.p_ai_work_cd is null
+	    and c.fk_company = a.fk_company
+	    and c.fk_company_staff_ai = a.fk_assign_ai
+	left outer join
+	    tbl_code e
+	on 1=1
+	    and e.pk_code = c.ai_work_cd
+	left outer join
+	    tbl_code f
+	on 1=1
+	    and f.pk_code = b.fd_contact_channel_code
+	left outer join
+	    tbl_company_staff ai
+	on 1=1
+	    and ai.pk_company_staff = a.fk_assign_ai
+	    and ai.fk_company = a.fk_company
+	left outer join
+	    tbl_code h
+	on 1=1
+	    and h.pk_code = a.fk_priority
+	left outer join
+	    tbl_company_staff staff
+	on 1=1
+	    and staff.pk_company_staff = a.fk_assign_staff
+	    and staff.fk_company = a.fk_company
+	left outer join
+	    tbl_code j
+	on 1=1
+	    and j.pk_code = b.fd_contact_status_code
+	left outer join
+	    tbl_code k
+	on 1=1
+	    and k.pk_code = a.fd_ticket_workflow_code
+	where 1=1
+	    and a.fk_company = #{fkCompany}
+	    <if test="startDate != null and startDate != ''">
+	        and a.fd_ticket_createdate <![CDATA[ >= ]]> str_to_date(#{startDate},'%Y/%m/%d %T')
+	    </if>
+	    <if test="endDate != null and endDate != ''">
+	        and a.fd_ticket_createdate <![CDATA[ <= ]]> str_to_date(#{endDate},'%Y/%m/%d %T')
+	    </if>
+	    <if test='pkIssueTicket != null and pkIssueTicket != ""'>
+	        and a.pk_issue_ticket = #{pkIssueTicket}
+	    </if>
+	    <if test='loginStaffPk != null and loginStaffPk != ""'>
+	        and a.fk_assign_staff =#{loginStaffPk}
+	    </if>
+	    <if test='searchAiName != null and searchAiName != ""'>
+	        and ai.fd_staff_name like CONCAT('%', #{searchAiName}, '%')
+	    </if>
+	    <if test='searchType != null and searchType != ""'>
+	        and c.ai_work_cd like CONCAT('%', #{searchType}, '%')
+	    </if>
+	    <if test='searchCustomerInfo != null and searchCustomerInfo != ""'>
+	        and (
+	            staff.fd_staff_name like CONCAT('%', #{searchCustomerInfo}, '%')
+	            or
+	            cust.fd_customer_name like CONCAT('%', #{searchCustomerInfo}, '%') 
+	            or
+	            a.customer_ani like CONCAT('%', #{searchCustomerInfo}, '%')
+	        )
+	    </if>
+	    <if test='searchWorkflow != null and searchWorkflow != ""'>
+	        and a.fd_ticket_workflow_code = #{searchWorkflow}
+	    </if>
+	    <if test='searchStaff != null and searchStaff != ""'>
+	        and staff.fd_staff_name = #{searchStaff}
+	    </if>
+	    <if test="searchTypeList != null">
+	        AND a.fk_priority in
+	        <foreach item="item" index="index" collection="searchTypeList"
+	                    open="(" separator="," close=")">
+	            #{item}
+	        </foreach>
+	    </if>
+		group by a.pk_issue_ticket
+	)
+	</sql>
+	
+	
+	<sql id="selectTicketforCnt">
+		with WITH_TICKET_LIST AS (
+		select 
+			a.fk_issue_ticket,
+			g.fd_ticket_workflow_code
+		from 
+		( select * 
+		from tbl_issue_contact
+			where fk_company = #{fkCompany}
+			and fk_issue_ticket is not null
+			and (fk_issue_contact_parent is null or fk_issue_contact_parent = '') 
+			and ( tb_broker_id is not null and tb_broker_id != '0000' )
+			<if test="startDate !='' and startDate != null and endDate != '' and endDate != null">
+				and DATE(fd_regdate) BETWEEN #{startDate} and #{endDate}
+			</if>
+			group by fk_issue_ticket
+		) AS a
+		left join tbl_issue_ticket AS g
+		on a.fk_issue_ticket = g.pk_issue_ticket
+		<if test="(loginStaffPk !='' and loginStaffPk != null) || (searchAiName !='' and searchAiName != null)
+			|| (searchType !='' and searchType != null) || (pkIssueTicket !='' and pkIssueTicket != null) 
+			|| (searchCustomerInfo !='' and searchCustomerInfo != null) || (searchStaff !='' and searchStaff != null)
+			|| (searchTypeList != null)
+		">
+		
+			left join 
+			(select * from tbl_ai_conf_work where p_ai_work_cd is null)		
+			AS b 
+			on ( a.fk_company_staff_ai = b.fk_company_staff_ai )
+			left join tbl_company_staff AS c
+			on ( a.fd_customer_uid = c.fd_staff_mobile or a.fd_customer_uid = c.fd_staff_phone)
+			and c.fk_company = a.fk_company
+			left join tbl_code AS d
+			on b.ai_work_cd = d.pk_code
+			left join tbl_code AS e
+			on a.fd_contact_channel_code = e.pk_code
+			left join tbl_company_staff AS f
+			on f.pk_company_staff = b.fk_company_staff_ai
+			and f.fk_company = a.fk_company 
+			left join tbl_code AS h
+			on g.fk_priority = h.pk_code
+			left join tbl_company_staff AS i
+			on g.fk_assign_staff = i.pk_company_staff
+			and i.fk_company = a.fk_company 
+			left join tbl_code AS j
+			on a.fd_contact_status_code = j.pk_code
+			left join tbl_code AS jj
+			on g.fd_ticket_workflow_code = jj.pk_code
+			left join tbl_company_customer AS k
+			on ( a.fd_customer_uid = k.fd_customer_mobile or a.fd_customer_uid = k.fd_customer_phone)
+			and k.fk_company = a.fk_company
+			where 1 = 1 
+			and g.pk_issue_ticket is not null
+			<if test="loginStaffPk !='' and loginStaffPk != null">
+			and g.fk_assign_staff =#{loginStaffPk}
+			</if>
+	<!-- 		and a.fd_customer_uid = k.fd_customer_mobile or a.fd_customer_uid = k.fd_customer_phone -->
+			<if test="searchAiName !='' and searchAiName != null">
+				and f.fd_staff_name like CONCAT('%', #{searchAiName}, '%')
+			</if>
+			<if test="searchType !='' and searchType != null">
+				and b.ai_work_cd like CONCAT('%', #{searchType}, '%')
+			</if>
+			<if test="pkIssueTicket !='' and pkIssueTicket != null">
+				and g.pk_issue_ticket like CONCAT('%', #{pkIssueTicket}, '%')
+			</if>
+			<if test="searchCustomerInfo !='' and searchCustomerInfo != null">
+				and (i.fd_staff_name like CONCAT('%', #{searchCustomerInfo}, '%')
+				or k.fd_customer_name like CONCAT('%', #{searchCustomerInfo}, '%') 
+				or a.fd_customer_uid like CONCAT('%', #{searchCustomerInfo}, '%') )
+			</if>
+	<!-- 		<if test="searchWorkflow !='' and searchWorkflow != null"> -->
+	<!-- 			and g.fd_ticket_workflow_code = #{searchWorkflow} -->
+	<!-- 		</if> -->
+			<if test="searchStaff !='' and searchStaff != null">
+				and i.fd_staff_name = #{searchStaff}
+			</if>
+			<if test="searchTypeList != null">
+	            AND g.fk_priority    in
+	            <foreach item="item" index="index" collection="searchTypeList"
+	                     open="(" separator="," close=")">
+	                #{item}
+	            </foreach>
+	        </if>
+	        group by a.fk_issue_ticket
+        </if>
+    	)
+	</sql>
+	
+	<select id="getTicketListCnt2" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		<!-- <include refid="selectTicketforCnt"></include>
+		SELECT COUNT(1) AS cnt,
+       count(case when fd_ticket_workflow_code='A1301' then 1 end) as newCnt,
+       count(case when fd_ticket_workflow_code='A1302' then 1 end) as inCnt,
+       count(case when fd_ticket_workflow_code='A1304' then 1 end) as heldCnt,
+       count(case when fd_ticket_workflow_code='A1305' then 1 end) as compCnt
+		from   WITH_TICKET_LIST -->
+		select 
+		 COUNT(1) AS cnt,
+       count(case when fd_ticket_workflow_code='A1301' then 1 end) as newCnt,
+       count(case when fd_ticket_workflow_code='A1302' then 1 end) as inCnt,
+       count(case when fd_ticket_workflow_code='A1304' then 1 end) as heldCnt,
+       count(case when fd_ticket_workflow_code='A1305' then 1 end) as compCnt
+       from(
+		select	a.fk_issue_ticket, g.fd_ticket_workflow_code
+		       from     ( select caller_name,
+		                        fd_customer_uid,
+		                        fd_regdate,
+		                        call_dt_from,
+		                        fk_issue_ticket,
+		                        caller_type,
+		                        ani,
+		                        fk_company_staff_ai,
+		                        fk_company,
+		                        fd_contact_channel_code,
+		                        fd_contact_status_code
+		                from    tbl_issue_contact
+		                where   fk_company                = #{fkCompany}
+		                and     fk_issue_ticket is not null
+		                and		tb_broker_id is not null
+		                and     tb_broker_id          != '0000'
+		                and
+		                        (
+		                                fk_issue_contact_parent is null or fk_issue_contact_parent = ''
+		                        )
+		                )
+		                AS a
+		                left join
+		                         (select ai_work_cd,
+		                                 fk_company_staff_ai
+		                         from    tbl_ai_conf_work
+		                         where   p_ai_work_cd is null
+		                         and fk_company = #{fkCompany}
+		                         )
+		                         AS b
+		                on       a.fk_company_staff_ai = b.fk_company_staff_ai
+		                left join tbl_issue_ticket AS g
+		                on       a.fk_issue_ticket = g.pk_issue_ticket
+		                left join tbl_company_staff AS i
+				         on       i.fk_company = #{fkCompany}
+				         and      g.fk_assign_staff = i.pk_company_staff
+		       where    1                     = 1
+		       	<if test='startDate != null and startDate != ""'>
+		       		and g.fd_ticket_createdate BETWEEN STR_TO_DATE(concat(#{startDate} , ' 00:00:00'), '%Y-%m-%d %T') AND STR_TO_DATE(concat(#{endDate} , ' 23:59:59'), '%Y-%m-%d %T')
+			    </if>
+			    <if test='pkIssueTicket != null and pkIssueTicket != ""'>
+			        and g.pk_issue_ticket = #{pkIssueTicket}
+			    </if>
+			    <if test='loginStaffPk != null and loginStaffPk != ""'>
+			        and g.fk_assign_staff =#{loginStaffPk}
+			    </if>
+			    <if test='searchType != null and searchType != ""'>
+			        and b.ai_work_cd like CONCAT('%', #{searchType}, '%')
+			    </if>
+				<if test='searchCallerName != null and searchCallerName != ""'>
+					and a.caller_name like CONCAT('%', #{searchCallerName}, '%')
+				</if>
+			    <if test='searchCustomerInfo != null and searchCustomerInfo != ""'>
+			        and (
+			            a.fd_customer_uid like CONCAT('%', #{searchCustomerInfo}, '%')
+			        )
+			    </if>
+			     <if test='searchStaff != null and searchStaff != ""'>
+			        and i.fd_staff_name = #{searchStaff}
+			    </if>
+			    <if test="searchTypeList != null">
+			        AND g.fk_priority in
+			        <foreach item="item" index="index" collection="searchTypeList"
+			                    open="(" separator="," close=")">
+			            #{item}
+			        </foreach>
+			    </if>
+		       group by a.fk_issue_ticket, g.fd_ticket_workflow_code) sa
+		       
+		
+    </select>
+    
+    <select id="getStaffList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select distinct i.fd_staff_name
+		from (
+		select * 
+		from tbl_issue_contact
+		where fk_company = #{fkCompany}
+		and ( tb_broker_id is not null and tb_broker_id != '0000' )
+<!-- 	일단 주석	and (reaction_type_last = 'transferCall' or reaction_type_last = 'consultation')  -->
+<!-- 		and (transfer_staff IS NOT NULL) -->
+		<if test="startDate !='' and startDate != null and endDate != '' and endDate != null">
+			and DATE(fd_regdate) BETWEEN #{startDate} and #{endDate}
+		</if>
+		) AS a
+		left join 
+			( select *
+			from    tbl_ai_conf_work
+			where   p_ai_work_cd is null
+			) AS b
+		
+		on a.fk_company_staff_ai = b.fk_company_staff_ai
+		
+		inner join tbl_issue_ticket AS g
+        on a.fk_issue_ticket = g.pk_issue_ticket
+        and g.fk_company = a.fk_company
+        inner join tbl_company_staff AS i
+        on g.fk_assign_staff = i.pk_company_staff
+        and  i.fk_company = a.fk_company
+        and i.fd_staff_ai_yn = 'N'
+		where 1 = 1 
+		and g.pk_issue_ticket is not null
+		group by i.pk_company_staff
+		order by i.fd_staff_name
+	</select>
+    
+    
+	
+	<select id="getTicketListCnt" resultType="Integer">
+    	select count(1) as cnt
+    	from (
+		select * 
+		from tbl_issue_contact
+		where fk_company = #{fkCompany}
+<!-- 	일단 주석	and (reaction_type_last = 'transferCall' or reaction_type_last = 'consultation')  -->
+			and (transfer_staff IS NOT NULL)	
+			and (fk_issue_contact_parent is null or fk_issue_contact_parent = '')
+			and ( tb_broker_id is not null and tb_broker_id != '0000' )
+		<if test="pkIssueContact !='' and pkIssueContact != null">
+			and pk_issue_contact like CONCAT('%', #{pkIssueContact}, '%')
+		</if>
+		<if test="startDate !='' and startDate != null and endDate != '' and endDate != null">
+			and DATE(fd_regdate) BETWEEN #{startDate} and #{endDate}
+		</if>
+		) AS a
+		left join 
+		(select * from tbl_ai_conf_work where p_ai_work_cd is null)		
+		AS b 
+		on ( a.fk_company_staff_ai = b.fk_company_staff_ai )
+		left join tbl_company_staff AS c
+		on a.fk_caller = c.pk_company_staff
+		left join tbl_code AS d
+		on b.ai_work_cd = d.pk_code
+		left join tbl_code AS e
+		on a.fd_contact_channel_code = e.pk_code
+		left join tbl_company_staff As f
+		on f.pk_company_staff = b.fk_company_staff_ai
+		left join tbl_issue_ticket AS g
+		on a.fk_issue_ticket = g.pk_issue_ticket
+		where 1 = 1 
+		<if test="searchAiName !='' and searchAiName != null">
+			and f.fd_staff_name like CONCAT('%', #{searchAiName}, '%')
+		</if>
+		<if test="searchType !='' and searchType != null">
+			and b.ai_work_cd like CONCAT('%', #{searchType}, '%')
+		</if> 
+    </select>
+    
+    <select id="getStaffInfo" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+    	select a.*, 
+    	b.fd_company_name, b.fd_company_phone,
+    	b.fd_address_common as fdCompanyAddressCommon, 
+    	b.fd_address_detail as fdCompanyAddressDetail 
+    	from
+    	tbl_company_staff as a
+    	inner join tbl_company as b
+    	on a.fk_company = b.pk_company
+    	where fk_company = #{fkCompany} 
+    	and #{ani} in (fd_staff_mobile , fd_staff_phone) LIMIT 1
+    </select>
+    
+    <select id="getCustomerInfo" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+    	select * from
+    	tbl_company_customer
+    	where fk_company = #{fkCompany}
+    	and #{ani} in (fd_customer_mobile , fd_customer_phone) LIMIT 1
+    	
+    </select>
+    
+    
+    <update id="updateCompanyStaffInfo">
+    	UPDATE
+            tbl_company_staff
+        SET
+			fd_staff_name = #{fdStaffName}
+    		,fd_staff_mobile = #{fdStaffMobile} 
+    		,fd_staff_email = #{fdStaffEmail}
+    		,fd_staff_duty = #{fdStaffDuty}
+    		,dept_disp_name = #{deptDispName}
+    		,fd_address_common = #{fdAddressCommon}
+    		,fd_address_detail = #{fdAddressDetail}
+    		,fk_modifier = #{fkWriter}
+    		,fd_moddate = now()
+    	WHERE
+        	pk_company_staff = #{pkCompanyStaff}
+    </update>
+    
+    
+    <update id="updateStaffCompanyInfo">
+    	UPDATE
+            tbl_company
+        SET
+			fd_company_name = #{fdCompanyName}
+    		,fd_company_phone = #{fdCompanyPhone} 
+    		,fd_address_common = #{fdCompanyAddressCommon}
+    		,fd_address_detail = #{fdCompanyAddressDetail}
+<!--     		,fdAdditionalInformation = #{fdAdditionalInformation} -->
+    		,fk_modifier = #{fkWriter}
+    		,fd_moddate = now()
+    	WHERE
+        	pk_company = #{fkCompany}
+    </update>
+    
+    <insert id="updateCompanyCustomerInfo">
+    	INSERT INTO tbl_company_customer (
+			<if test="pkCompanyCustomer > 0">pk_company_customer, </if>
+			fk_company
+			, fd_customer_name
+			, fd_company_name
+			, fd_company_dept
+			, fd_company_position
+			, fd_customer_mobile
+			, fd_customer_phone
+			, fd_customer_email
+			, fd_company_address_common
+			, fd_company_address_detail
+			, fd_additional_information
+			, fd_customer_address_common
+			, fd_customer_address_detail
+			, fk_writer
+			, fd_regdate
+		) 
+		VALUE(
+			<if test="pkCompanyCustomer > 0">#{pkCompanyCustomer}, </if>
+ 			#{fkCompany}  <!--.......?????????????????????????? -->
+			, #{fdCustomerName}
+			, #{fdCompanyName}
+			, #{fdCompanyDept}
+			, #{fdCompanyPosition}
+			, #{fdCustomerMobile}
+			, #{fdCustomerPhone}
+			, #{fdCustomerEmail}
+			, #{fdCompanyAddressCommon}
+			, #{fdCompanyAddressDetail}
+			, #{fdAdditionalInformation}
+			, #{fdCustomerAddressCommon}
+			, #{fdCustomerAddressCommon}
+			, #{fk_writer}
+			, now()
+		)
+		ON DUPLICATE KEY UPDATE
+			fd_customer_name = #{fdCustomerName}
+    		,fd_company_name = #{fdCompanyName} 
+    		,fd_company_dept = #{fdCompanyDept}
+    		,fd_company_position = #{fdCompanyPosition}
+    		,fd_customer_mobile = #{fdCustomerMobile}
+    		,fd_customer_phone = #{fdCustomerPhone}
+    		,fd_customer_email = #{fdCustomerEmail}
+    		,fd_additional_information = #{fdAdditionalInformation}
+    		,fd_customer_address_common = #{fdCustomerAddressCommon}
+    		,fd_customer_address_detail = #{fdCustomerAddressDetail}
+    		,fd_company_address_common = #{fdCompanyAddressCommon}
+    		,fd_company_address_detail = #{fdCompanyAddressDetail}
+    		,fk_modifier = #{fkWriter}
+    		,fd_moddate = now()
+    </insert>
+    
+    <update id="updateTicketInfo">
+    	UPDATE
+    		tbl_issue_ticket
+    	SET
+    		fk_priority = #{fkPriority}
+    		,fd_ticket_workflow_code = #{fdTicketWorkflowCode} 
+    		,fd_ticket_limit_date = #{fdTicketLimitDate}
+    		,fd_comment = #{fdComment}
+    		,fk_modifier = #{fkWriter}
+    		,fd_moddate = now()
+<!--			,dt_close = now()-->
+    	WHERE
+        	pk_issue_ticket = #{pkIssueTicket}
+    </update>
+    
+    <update id="updateTicketFlow">
+    	UPDATE
+    		tbl_issue_ticket
+    	SET
+    		fd_ticket_workflow_code = #{fdTicketWorkflowCode} 
+    		,fk_modifier = #{fkWriter}
+    		,fd_moddate = now()
+    	WHERE
+        	pk_issue_ticket = #{pkIssueTicket}
+    </update>
+    
+    <update id="changeTicketStaff">
+    	UPDATE
+    		tbl_issue_ticket
+    	SET
+    		fk_assign_staff = #{staffPk}
+    		,fk_modifier = #{fkWriter}
+    		,fd_moddate = now()
+    	WHERE
+        	pk_issue_ticket = #{pkIssueTicket}
+    </update>
+
+	<insert id="updateIssueTicket">
+		INSERT INTO tbl_issue_ticket (
+		broker_id,
+		dnis,
+		fk_company,
+		fd_ticket_workflow_code,
+		caller_type,
+		customer_ani,
+		caller_name,
+		fk_company_customer,
+		fd_ticket_title,
+		fk_assign_ai,
+		fk_writer,
+		fd_ticket_owner_uid,
+		fd_regdate,
+		fk_priority,
+		fk_assign_staff,
+		fk_issue_dialogue_start
+		) VALUES (
+			#{tbBrokerId}
+		,	#{dnis}
+		,	#{fkCompany}
+		,	'A1301'
+		,	'USER02'
+		,	#{ani}
+		,	#{fromName}
+		,	#{fromFk}
+		,	#{msgTitle}
+		,	#{fkCompanyStaffAi}
+		,	#{fkWriter}
+		,	'E'
+		,	NOW()
+		,	'C1004'
+		,	#{fkAssignStaff}
+		,	#{fkIssueDialogueStart}
+		)
+	</insert>
+
+	<select id="selectDialogueTicket" resultType="Integer">
+		SELECT pk_issue_dialogue FROM tbl_issue_dialogue
+		WHERE fd_call_broker_id = #{tbBrokerId}
+		AND fd_call_broker_id IN (SELECT tb_broker_id FROM tbl_issue_contact)
+		ORDER BY pk_issue_dialogue ASC
+		LIMIT 1;
+	</select>
+
+	<select id="selectAssignStaff" resultType="Integer">
+		SELECT pk_company_staff
+		FROM tbl_company_staff
+		WHERE fk_company = #{fkCompany}
+		AND fd_company_master_yn = 'Y'
+	</select>
+
+	<select id="selectPkIssueTicket" resultType="Integer">
+		SELECT pk_issue_ticket
+		FROM tbl_issue_ticket
+		WHERE broker_id = #{tbBrokerId}
+		ORDER BY pk_issue_ticket ASC LIMIT 1;
+	</select>
+	
+	<update id="updateFkIssueTicket">
+		UPDATE tbl_issue_contact
+		SET fk_issue_ticket = #{pkIssueTicket}
+		WHERE tb_broker_id = #{tbBrokerId}
+	</update>
+
+	<update id="updateFdMessage">
+		UPDATE tbl_issue_dialogue
+		SET
+			fd_message = #{fdMessage}
+		  , dt_edit_msg_body = NOW()
+		WHERE pk_issue_dialogue = #{pkIssueDialogue}
+	</update>
+
+	<insert id="addDialogueLog" parameterType="map">
+		INSERT INTO tbl_issue_dialogue_log (
+		fk_issue_dialogue,
+		fk_issue_contact,
+		fd_call_broker_id,
+		fd_message,
+		fd_message_to,
+		fk_writer,
+		fd_regdate
+		) VALUES (
+		#{fkIssueDialogue},
+		#{fkIssueContact},
+		#{fdCallBrokerId},
+		#{fdMessage},
+		#{fdMessageTo},
+		#{fkWriter},
+		(SELECT fd_regdate FROM tbl_issue_dialogue WHERE pk_issue_dialogue = #{fkIssueDialogue})
+		)
+	</insert>
+
+	<select id="getFormInputData" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT
+			fi.disp_order,
+			fi.input_title,
+			fid.input_key,
+			fid.input_value,
+			fi.disp_yn
+		FROM
+			tbl_form_input_data fid
+			INNER JOIN tbl_form_input fi ON fi.fk_form_code = fid.fk_form_code
+										AND fi.input_name = fid.input_key
+			LEFT JOIN tbl_issue_ticket it ON fid.fk_issue_ticket = it.pk_issue_ticket
+			LEFT JOIN tbl_issue_contact ic ON it.broker_id = ic.tb_broker_id
+										AND ic.fk_issue_contact_parent IS NULL
+		WHERE
+			fid.fk_issue_ticket = #{fkIssueTicket}
+		ORDER BY fi.disp_order ASC
+	</select>
+
+	<update id="updateFormData">
+		UPDATE tbl_form_input_data SET
+			input_value = #{inputValue},
+			fd_moddate = now()
+		WHERE
+			fk_issue_ticket = #{fkIssueTicket}
+			AND input_key = #{inputKey}
+	</update>
+
+	<update id="updateTicketComment">
+		UPDATE tbl_issue_ticket SET
+		fd_comment = #{commentData}
+		WHERE pk_issue_ticket = #{fkIssueTicket}
+	</update>
+
+</mapper>

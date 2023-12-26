@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<link
+				rel="stylesheet"
+				href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+				integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3"
+				crossOrigin="anonymous"
+		/>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+		<meta charset="UTF-8">
+		<title>상담/문의</title>
+		<style>
+			.chating{
+				background-color: black;
+				width: 100%;
+				height: 500px;
+				overflow: auto;
+			}
+			.chating .me{
+				color: white;
+				text-align: right;
+			}
+			.chating .others{
+				color: yellow;
+				text-align: left;
+			}
+		</style>
+	</head>
+
+	<script type="text/javascript">
+
+		var url_prefix = "/workapi/v1/chat";
+		var ws;
+
+		function wsOpen(){
+			//웹소켓 전송시 현재 방의 번호를 넘겨서 보낸다.
+			ws = new WebSocket("ws://" + location.host + url_prefix + "/connect/"+$("#roomNumber").val());
+			wsEvt();
+		}
+
+		function wsEvt() {
+			ws.onopen = function(data){
+				//소켓이 열리면 동작
+			}
+
+			ws.onmessage = function(data) {
+				//메시지를 받으면 동작
+				var msg = data.data;
+				if(msg != null && msg.trim() !== ''){
+					var d = JSON.parse(msg);
+					if(d.type === "getId"){
+						var si = d.sessionId != null ? d.sessionId : "";
+						if(si !== ''){
+							$("#sessionId").val(si);
+						}
+					}else if(d.type === "message"){
+						if(d.sessionId === $("#sessionId").val()){
+							$("#chating").append("<p class='me'>나("+ d.userName +") : " + d.msg + "</p>");
+						}else{
+							$("#chating").append("<p class='others'>" + d.userName + " : " + d.msg + "</p>");
+						}
+
+					}else{
+						console.warn("unknown type!")
+					}
+				}
+			}
+
+			document.addEventListener("keypress", function(e){
+				if(e.keyCode === 13){ //enter press
+					send();
+				}
+			});
+		}
+
+		function chatName(){
+			var userName = $("#userName").val();
+
+			if(userName == null || userName.trim() === ""){
+				alert("사용자 이름을 입력해주세요.");
+				$("#userName").focus();
+
+			}else{
+				wsOpen();
+				$("#yourName").hide();
+				$("#yourMsg").show();
+			}
+		}
+
+		function send() {
+			if( $("#chatting").val() == ""){
+				return false;
+			}
+
+			var option ={
+				type        : "message",
+				roomNumber  : $("#roomNumber").val(),
+				sessionId   : $("#sessionId").val(),
+				userName    : $("#userName").val(),
+				msg         : $("#chatting").val()
+			}
+			ws.send(JSON.stringify(option))
+			$('#chatting').val("");
+		}
+	</script>
+
+	<body class="d-flex justify-content-center">
+		<div class="col-9 p-2">
+
+			<h3 th:text="|상담/문의 제목 : ${roomName}|"></h3>
+			<hr />
+
+			<input type="hidden" id="sessionId"  value="">
+			<input type="hidden" id="roomNumber" th:value="${roomNumber}">
+
+			<table class="table text-center table-bordered">
+				<thead>
+					<tr >
+						<th scope="col" class="col-2"></th>
+						<th scope="col" class="col-8"></th>
+						<th scope="col" class="col-2"></th>
+					</tr>
+				</thead>
+
+				<tbody>
+					<tr>
+						<td scope="row">대화창</td>
+						<td>
+							<div id="chating" class="chating"></div>
+						</td>
+						<td></td>
+					</tr>
+
+					<tr id="yourName">
+						<td scope="row">사용자</td>
+						<td><input type="text" name="userName" id="userName" class="w-100" placeholder="사용자 대화명을 입력해주세요." /></td>
+						<td><button onclick="chatName()" class="btn btn-primary btn-sm">사용자 등록</button></td>
+					</tr>
+					<tr id="yourMsg" style="display: none">
+						<td scope="row">메시지</td>
+						<td><input id="chatting" class="w-100" placeholder="보내실 메시지를 입력해주세요." /></td>
+						<td><button onclick="send()" id="sendBtn" class="btn btn-info btn-sm">메시지 전송</button></td>
+					</tr>
+				</tbody>
+			</table>
+
+			<button onclick="location.href='list'" class="btn btn-success">목록 이동</button>
+
+		</div>
+	</body>
+</html>

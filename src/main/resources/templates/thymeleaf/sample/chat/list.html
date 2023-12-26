@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<link
+				rel="stylesheet"
+				href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+				integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3"
+				crossOrigin="anonymous"
+		/>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+		<meta charset="UTF-8">
+		<title>상담/문의</title>
+	</head>
+
+	<script type="text/javascript">
+
+		var url_prefix = "/workapi/v1/chat";
+
+		window.onload = function(){
+
+			getRoomList();
+			createRoom();
+		}
+
+		function getRoomList(){
+
+			commonAjax( url_prefix +'/getRoomList', "", 'post', function(result){
+				createChatingRoom(result);
+			});
+		}
+
+		function createRoom(){
+
+			$("#createRoom").click(function(){
+
+				if( $('#roomName').val() === "" ){
+					alert("방 제목을 입력해주세요.");
+					return false;
+				}
+
+				var msg = {
+					roomName : $('#roomName').val()
+				};
+
+				commonAjax( url_prefix +'/createRoom', msg, 'post', function(result){
+					createChatingRoom(result);
+				});
+
+				$("#roomName").val("");
+			});
+		}
+
+		function goRoom(number, name){
+			location.href = "/workapi/v1/chat/chating?roomName="+ name +"&"+"roomNumber="+ number;
+		}
+
+		function createChatingRoom(res){
+
+			if(res != null){
+				var tag = "";
+				res.forEach(function(d, idx){
+					var rn = d.roomName.trim();
+					var roomNumber = d.roomNumber;
+					tag +=  "<tr>"
+						+       "<th scope='row'>"+ (idx+1)  +"</th>"
+						+       "<td class='text-start'>"+ rn +"</td>"
+						+       "<td><button type='button' class='btn btn-info btn-sm' onClick=\"goRoom('"+ roomNumber +"', '"+ rn +"')\">상담하기</button></td>"
+						+   "</tr>";
+				});
+				$("#roomList").empty().append(tag);
+			}
+		}
+
+		function commonAjax(url, parameter, type, calbak, contentType){
+
+			$.ajax({
+				url         : url,
+				data        : parameter,
+				type        : type,
+				contentType : contentType!=null ? contentType : 'application/x-www-form-urlencoded; charset=UTF-8',
+				success     : function (res) {
+					calbak(res);
+				},
+				error       : function(err){
+					console.log('error');
+					calbak(err);
+				}
+			});
+		}
+	</script>
+
+	<body class="d-flex justify-content-center">
+		<div class="col-8 p-2">
+
+			<h3>상담/문의 목록</h3>
+			<hr />
+
+			<table class="table text-center table-bordered">
+				<thead>
+				<tr>
+					<th scope="col" class="col-2">방 PK</th>
+					<th scope="col" class="col-8">제목</th>
+					<th scope="col" class="col-2">-</th>
+				</tr>
+				</thead>
+
+				<tbody id="roomList"></tbody>
+
+				<tr>
+					<th scope="row">방 제목</th>
+					<th><input type="text" name="roomName" id="roomName" class="w-100" placeholder="상담/문의 제목을 입력해주세요." /></th>
+					<th><button id="createRoom" class="btn btn-primary btn-sm">신규등록</button></th>
+				</tr>
+			</table>
+
+		</div>
+	</body>
+</html>

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.app.auth.dao.AppAuthDao">
+
+    <select id="getCompanyStaffBySignupCode" resultType="CompanyStaffVo">
+        <![CDATA[
+        ]]>
+        SELECT
+                  A.pk_company_staff
+                , A.fd_staff_id
+                , A.fd_staff_pw
+                , A.fd_staff_name
+                , A.fd_signup_keycode
+                , A.fd_staff_status_code
+                , A.fd_push_noti_yn
+                , B.pk_company
+                , B.fd_company_name
+                , B.fd_company_id
+                , B.fd_company_logo_file_path
+                , (
+                    SELECT
+                        BB.fd_dept_name
+                    FROM
+                        tbl_company_dept_staff AA
+                            INNER JOIN
+                        tbl_company_dept BB ON (BB.pk_company_dept=AA.fk_company_dept)
+                    WHERE
+                        fk_company_staff = A.pk_company_staff
+                    limit 1
+                ) AS fd_dept_name
+
+        FROM    tbl_company_staff A
+                    LEFT JOIN
+                tbl_company B ON (B.pk_company = A.fk_company)
+        WHERE 1 = 1
+                <if test="fd_staff_name != '' and fd_staff_name != null">
+                    AND A.fd_staff_name = #{fd_staff_name}
+                </if>
+                <if test="fd_staff_mobile != '' and fd_staff_mobile != null">
+                    AND A.fd_staff_mobile = #{fd_staff_mobile}
+                </if>
+                <if test="fd_signup_keycode != '' and fd_signup_keycode != null">
+                    AND A.fd_signup_keycode = #{fd_signup_keycode}
+                </if>
+    </select>
+
+    <select id="getCompanyStaffByPk" resultType="CompanyStaffVo">
+SELECT
+                  A.pk_company_staff
+                , A.fd_staff_id
+                , A.fd_staff_pw
+                , A.fd_staff_name
+                , A.fd_staff_status_code
+                , A.fd_push_noti_yn
+                , A.fd_push_token
+                , A.fd_staff_level_code
+                , A.fd_staff_mobile
+                , B.pk_company
+                , B.fd_company_name
+                , B.fd_company_id
+                , B.fd_company_logo_file_path
+                , C.fd_name role_name
+                , A.fd_signup_keycode
+                , (
+                    SELECT
+                        BB.fd_dept_name
+                    FROM
+                        tbl_company_dept_staff AA
+                            INNER JOIN
+                        tbl_company_dept BB ON (BB.pk_company_dept=AA.fk_company_dept)
+                    WHERE
+                        fk_company_staff = A.pk_company_staff
+                    ORDER BY AA.fk_company_dept ASC
+                    limit 1
+                ) AS fd_dept_name
+                , (
+                    SELECT
+                        CC.fd_staff_name
+                      FROM
+                        tbl_company_staff CC
+                     WHERE
+                        CC.fk_company = A.fk_company AND CC.fd_company_master_yn = 'Y'
+                        LIMIT 1
+                ) AS fd_company_master_staff_name
+        FROM    tbl_company_staff A
+                INNER JOIN tbl_code C on C.pk_code = A.fd_staff_level_code
+                    LEFT JOIN
+                tbl_company B ON (B.pk_company = A.fk_company)
+        WHERE   A.pk_company_staff =  #{pk_company_staff}
+    </select>
+
+    <update id="updateCompanyStaffLogin">
+        UPDATE  tbl_company_staff
+        SET     fd_login_date	= now()
+            <if test="fd_push_token != null and !''.equals(fd_push_token)">
+                , fd_push_token    = #{fd_push_token}
+            </if>
+        WHERE pk_company_staff  = #{pk_company_staff}
+    </update>
+
+    <insert id="insertCompanyStaffLogin">
+        INSERT INTO tbl_company_staff_login(
+            fk_company_staff,
+            fd_app_version,
+            fd_os_code,
+            fd_push_token
+        )VALUES(
+            #{pk_company_staff},
+            #{fd_app_version},
+            #{fd_os_code},
+            #{fd_push_token}
+        )
+    </insert>
+
+    <select id="getAppVersion" resultType="AppVersionVo">
+        <![CDATA[
+        WITH with_version_android AS (
+            SELECT  pk_app_version
+            FROM    tbl_app_version
+            WHERE   fd_open_yn = 'Y'
+                AND fd_os_code = 'A1801'
+                AND fd_version_open_date <= now()
+            ORDER BY fd_version_major DESC, fd_version_minor DESC, fd_version_minor DESC
+            limit 1
+        )
+        , with_version_ios AS (
+            SELECT  pk_app_version
+            FROM    tbl_app_version
+            WHERE   fd_open_yn = 'Y'
+                AND fd_os_code = 'A1802'
+                AND fd_version_open_date <= now()
+            ORDER BY fd_version_major DESC, fd_version_minor DESC, fd_version_minor DESC
+            limit 1
+        )
+        ]]>
+
+        SELECT
+                 pk_app_version
+                ,fd_os_code
+                ,fd_version_major
+                ,fd_version_minor
+                ,fd_version_patch
+                ,fd_version_title
+                ,fd_version_contents
+                ,fd_version_open_date
+                ,fd_open_yn
+                ,fd_regdate
+                ,fd_moddate
+        FROM    tbl_app_version
+        WHERE   pk_app_version = (SELECT pk_app_version FROM with_version_android)
+             OR pk_app_version = (SELECT pk_app_version FROM with_version_ios)
+    </select>
+
+</mapper>

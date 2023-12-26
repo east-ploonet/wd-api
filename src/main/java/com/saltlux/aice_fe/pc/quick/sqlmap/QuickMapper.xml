@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.quick.dao.QuickDao">
+	
+	<select id="getQuickStartUserInfo" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.fd_staff_name, a.fd_staff_mobile, a.fd_staff_email, a.fd_staff_gender_mf, a.fd_address_detail, a.fd_address_common
+		from tbl_company_staff a
+		where a.fk_company = #{fkCompany}
+		and a.pk_company_staff = #{quickStaffPk}
+	</select>
+	
+	<select id="getQuickStartCompanyInfo" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.fd_company_name, a.ceo_name, a.fd_company_phone, a.company_email, a.fd_biz_license_num , a.open_dt, a.fd_address_common, a.fd_address_detail
+		from tbl_company a
+		where a.pk_company = #{fkCompany}
+	</select>
+	
+	<update id="updateQuickStartUserInfo">
+	    update tbl_company_staff set
+			fd_address_common = #{fdAddressCommon},
+			fd_address_detail = #{fdAddressDetail}
+		where fk_company = #{fkCompany}
+		and pk_company_staff = #{pkCompanyStaff}
+    </update>
+    
+	<update id="updateQuickStartCompanyInfo" >
+	    update tbl_company set
+			fd_biz_license_num = #{fdBizLicenseNum},
+			open_dt = #{openDt},
+			fd_address_common = #{fdAddressCommon},
+			fd_address_detail = #{fdAddressDetail}
+		where pk_company = #{fkCompany}
+    </update>
+    
+</mapper>

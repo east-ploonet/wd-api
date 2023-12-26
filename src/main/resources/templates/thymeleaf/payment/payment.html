@@ -1,0 +1,128 @@
+<html>
+<head>
+    <!-- 결제창 호출 JS -->
+    <script type="text/javascript" src="https://testpay.kcp.co.kr/plugin/payplus_web.jsp"></script>
+<!--    <script type="text/javascript" src="https://pay.kcp.co.kr/plugin/payplus_web.jsp"></script>-->
+    <script type="text/javascript">
+
+        /* 인증완료시 재귀 함수  */
+        function m_Completepayment(FormOrJson, closeEvent) {
+            var frm = document.order_info;
+            GetField(frm, FormOrJson);
+
+            if (frm.res_cd.value == "0000") {
+                frm.submit();
+            } else {
+                alert("[" + frm.res_cd.value + "] " + frm.res_msg.value);
+                closeEvent();
+            }
+        }
+
+        /* 결제창 실행 함수 */
+        function jsf__pay(form) {
+            form.pay_method.value = "100000000000"; //신용카드
+            try {
+                KCP_Pay_Execute(form);
+            } catch (e) {
+                /* IE 에서 결제 정상종료시 throw로 스크립트 종료 */
+            }
+        }
+    </script>
+</head>
+<body>
+
+<form name="order_info" method="post" action="http://localhost:3000/workapi/v1/payment/auth">
+    <img src ="http://localhost:8080/workapi/v1/file/image?path=FAQ/2022/10/18/1666026210057_sleepy_coffee.png"/>
+    주문정보 세팅
+    <br>
+    오더번호(고겍 관리용)
+    <br>
+    <input type="text" name="ordr_idxx" value="TEST12345" maxlength="40"/>
+    <br>
+    상품명
+    <br>
+    <input type="text" name="good_name" value="운동화"/>
+    <br>
+    결제금액
+    <br>
+    <input type="text" name="good_mny" value="1004" maxlength="9"/>
+    <br>
+    구매자
+    <br>
+    <input type="text" name="buyr_name" value="홍길동"/>
+    <br>
+    구매자 전화번호
+    <br>
+    <input type="text" name="buyr_tel2" value="010-0000-0000"/>
+    <br>
+    구매자 이메일
+    <br>
+    <input type="text" name="buyr_mail" value="test@test.co.kr"/>
+
+    <br>
+    결제 방법(카드결제 및 간편결제는 “100000000000” 로 고정)
+    <br>
+    <input type="text" name="pay_method" value="100000000000"/>
+    <br>
+    페이코 N/Y
+    <br>
+    <input type="text" name="payco_direct" value="N"/>
+    <br>
+    네이버 페이 N/Y
+    <br>
+    <input type="text" name="naverpay_direct" value="N"/>
+    <br>
+    카카오페이 N/Y
+    <br>
+    <input type="text" name="kakaopay_direct" value="N"/>
+    <br>
+    <!-- 결제요청  -->
+    <a href="#none" onclick="jsf__pay(document.order_info);">결제요청</a>
+    <br>
+    <br>
+    가맹점 정보 설정
+    <br>
+    상점 코드(관리자 확인)
+    테스트코드
+    * T0000 - PAYCO, L.PAY
+    * A8P9W - 삼성페이, SSG페이, 카카오페이, 네이버페이
+    <br>
+    <input type="text" name="site_cd" value="T0000"/>
+    <br>
+    사이트 이름
+    <br>
+    <input type="text" name="site_name" value="TEST SITE"/>
+    <br>
+    <br>
+    결제 완료후 인증데이터 처리
+    <br>
+    결과 코드
+    <br>
+    <input type="text" name="res_cd" value=""/>
+    <br>
+    결과 메시지
+    <br>
+    <input type="text" name="res_msg" value=""/>
+    <br>
+    결제창 인증결과 암호화 정보
+    <br>
+    <input type="text" name="enc_info" value=""/>
+    <br>
+    결제창 인증결과 암호화 정보
+    <br>
+    <input type="text" name="enc_data" value=""/>
+    <br>
+    결제 방법
+    <br>
+    <input type="text" name="ret_pay_method" value=""/>
+    <br>
+    결제요청타입
+    <br>
+    <input type="text" name="tran_cd" value=""/>
+    <br>
+    결제 방법
+    <br>
+    <input type="text" name="use_pay_method" value=""/>
+</form>
+</body>
+</html>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.issue.dao.IssueDialogDao">
+
+<!--    <cache-ref namespace="com.saltlux.aice_fe.pc.issue.dao.IssueDialogDao"/>-->
+    <select id="getAllDialogWithoutContact" resultType="IssueDialogueVo">
+        select * from tbl_issue_dialogue where pk_issue_dialogue not in
+            (select pk_issue_dialogue from tbl_issue_dialogue, tbl_issue_contact where pk_issue_contact = fk_issue_contact) LIMIT 1000
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM tbl_issue_dialogue
+         WHERE pk_issue_dialogue = #{pk_issue_dialogue}
+    </delete>
+
+    <delete id="deleteByContactId">
+        DELETE FROM tbl_issue_dialogue
+         WHERE fk_issue_contact = #{pk_issue_contact}
+    </delete>
+</mapper>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 30초마다 설정 파일 재 확인. 변경시 reloading -->
+<configuration scan="true" scanPeriod="30 seconds">
+    <!--<shutdownHook/>-->
+
+    <!-- external config file -->
+    <springProfile name="local">
+        <property resource="application-local.properties"/>
+    </springProfile>
+    <springProfile name="dev">
+        <property resource="application-dev.properties"/>
+    </springProfile>
+    <springProfile name="real">
+        <property resource="application-real.properties"/>
+    </springProfile>
+    <springProfile name="divide">
+        <property resource="application-divide.properties"/>
+    </springProfile>
+
+    <property name="LOG_DIR" value="${logging.file.path}"/>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36}.%M\(%line\) - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- 하루에 한개씩 파일 생성 -->
+            <fileNamePattern>${LOG_DIR}/console_log.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- maxHIstory 설정은 위 부분에 롤링 정책에 따라 적용. 30 : 파일 30개 이전 기록은 삭제됨-->
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36}.%M\(%line\) - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="AsyncFile" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>20000</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <appender-ref ref="FILE"/>
+        <includeCallerData>true</includeCallerData>
+    </appender>
+
+    <appender name="AsyncSTDOUT" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>20000</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <appender-ref ref="STDOUT"/>
+        <includeCallerData>true</includeCallerData>
+    </appender>
+
+    <logger name="org.springframework" additivity="false" level="debug">
+        <appender-ref ref="AsyncFile"/>
+        <!--        <appender-ref ref="STDOUT"/>-->
+    </logger>
+    
+    <logger name="org.apache.http.impl.conn.PoolingHttpClientConnectionManager" level="warn" additivity="false">
+	<appender-ref ref="STDOUT" />
+	</logger>
+
+<!--    <logger name="org.springframework" additivity="false" level="DEBUG">-->
+        <!--        <appender-ref ref="AsyncFile" />-->
+<!--        <appender-ref ref="STDOUT"/>-->
+<!--    </logger>-->
+
+    <!-- sql log -->
+    <logger name="jdbc" level="OFF"/>
+    <logger name="jdbc.sqlonly" level="OFF"/>  <!-- sql문만을 로그 남김 -->
+    <logger name="jdbc.sqltiming" level="DEBUG"/>  <!-- sql 수행 시간 -->
+    <logger name="jdbc.audit" level="OFF"/>  <!-- resultset을 제외한 모든 jdbc 호출, 비추 -->
+    <logger name="jdbc.resultset" level="OFF"/>  <!-- resultset을 포함한 모든 jdbc 호출, 비추 -->
+    <logger name="jdbc.resultsettable" level="OFF"/>  <!-- sql 수행 결과 table 로그-->
+    <logger name="jdbc.connection" level="OFF"/>
+
+    <logger name="com.saltlux.aice_*.**" additivity="true"/>
+
+
+    <root>
+        <appender-ref ref="AsyncFile"/>
+
+        <springProfile name="local">
+            <appender-ref ref="STDOUT"/>
+        </springProfile>
+    </root>
+
+</configuration>

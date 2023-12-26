@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.sms.dao.SmsDao">
+	
+	<select id="getInfo" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.*
+		from tbl_tran_management a
+		where a.fk_company = #{loginCompanyPk}
+	</select> 
+	 
+	<insert id="tranRegist">
+        INSERT INTO tbl_send_message
+        (
+		
+		 fk_message_temp
+		, fk_email_management  
+		, fk_tel_line
+		, fk_campaign
+		, fk_type
+		, fd_send_file_name
+		, fd_send_file_path
+		, fd_message_flag
+		, fd_message_title
+		, fd_message_content
+		, fk_writer
+		, fd_regdate
+        )
+        VALUES
+        (
+		 #{smsTranVo.fk_message_temp}
+		, #{smsTranVo.fk_email_management}
+		, #{smsTranVo.fk_tel_line}
+		, #{smsTranVo.fk_campaign}
+		, #{smsTranVo.fk_type}
+		, #{smsTranVo.fd_send_file_name}
+		, #{smsTranVo.fd_send_file_path}
+		, #{smsTranVo.fd_message_flag}
+		, #{smsTranVo.fd_message_title}
+		, #{smsTranVo.fd_message_content}
+		, #{smsTranVo.fk_writer}
+		, now()
+
+        )
+         <selectKey keyProperty="pk_send_message" resultType="long" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+    </insert>
+    
+    <insert id="tranConsigneeRegist">
+        INSERT INTO tbl_send_consignee
+        (
+
+		 fd_send_data
+		, fk_writer
+		, fd_regdate
+<!-- 		, fk_modifier -->
+<!-- 		, fd_moddate -->
+        )
+        VALUES
+        (
+		 #{fd_send_data}
+		, #{fk_writer}
+		, now()
+
+        )
+    </insert> 
+    
+    <insert id="tranFileRegist">
+        INSERT INTO tbl_send_file
+        (
+
+		 fk_send_message
+		, fk_company  
+		, fd_send_file_name
+		, fd_send_file_path
+		, fk_writer
+		, fd_regdate
+<!-- 		, fk_modifier -->
+<!-- 		, fd_moddate -->
+        )
+        VALUES
+        (
+		 #{fk_send_message}
+		, #{fk_company}
+		, #{fd_send_file_name}
+		, #{fd_send_file_path}
+		, #{fk_writer}
+		, now()
+
+        )
+    </insert> 
+	   
+</mapper>

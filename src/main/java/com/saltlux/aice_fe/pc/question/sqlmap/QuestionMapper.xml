@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.question.dao.QuestionDao">
+
+
+    <select id="getQuestionType" resultType="QuestionTypeVo">
+        select *
+        from tbl_question_type
+        where fd_use_yn = 'Y';
+    </select>
+
+    <insert id="saveQuestion" parameterType="QuestionVo" useGeneratedKeys="true" keyProperty="pk_question">
+        insert into tbl_question
+        (fk_writer,
+         fd_regdate,
+         fk_modifier,
+         fd_moddate,
+         fk_company_staff,
+         fd_title,
+         fd_name,
+         fd_mobile,
+         fd_email,
+         fd_content,
+         fk_question_type,
+         fd_reply_yn)
+        values (#{fk_company_staff},
+                now(),
+                #{fk_company_staff},
+                now(),
+                #{fk_company_staff},
+                #{fd_title},
+                #{fd_name},
+                #{fd_mobile},
+                #{fd_email},
+                #{fd_content},
+                #{fk_question_type},
+                'N')
+    </insert>
+
+    <insert id="saveTermsAgree">
+        insert into tbl_terms_agree_question
+        (fk_question,
+         fk_terms,
+         fd_agree_yn,
+         fd_agree_date)
+        values (#{pk_question},
+                #{fk_terms},
+                #{fd_agree_yn},
+                now())
+
+    </insert>
+
+
+    <insert id="registerQuestionFile" parameterType="map">
+        insert into tbl_question_file
+        (
+        fk_question,
+        fd_file_name,
+        fd_mime_code,
+        fd_file_size,
+        fd_file_path
+        )
+        values
+        <foreach collection="questionFileVoList" item="item" separator=",">
+            (
+            #{item.fk_question},
+            #{item.fd_file_name},
+            #{item.fd_mime_code},
+            #{item.fd_file_size},
+            #{item.fd_file_path}
+            )
+        </foreach>
+
+
+    </insert>
+
+    <select id="getQuestion" parameterType="list" resultType="QuestionVo">
+        SELECT B.pk_question,C.pk_question_type,C.fd_question_name, B.fd_content, B.fd_reply_yn , B.fd_regdate, B.fd_title, B.fd_reply_content, B.fd_reply_regdate
+        FROM tbl_question B
+                 left join
+             tbl_question_type C ON (C.pk_question_type = B.fk_question_type)
+        WHERE fk_company_staff = #{staff_pk}
+        <if test="query !=''">
+            and(B.fd_content LIKE CONCAT('%',#{query} ,'%') or B.fd_title LIKE CONCAT('%',#{query} ,'%'))
+        </if>
+        ORDER BY pk_question DESC
+            LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="getQuestionFiles" resultType="QuestionFileVo">
+        select * from tbl_question_file where fk_question in
+        <foreach collection="collect" item="item" index="index" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </select>
+
+    <select id="getQuestionCnt" resultType="Integer">
+
+        SELECT COUNT(pk_question)
+        FROM tbl_question
+        WHERE fk_company_staff = #{staff_pk}
+        <if test="query !=''">
+            and ( fd_content LIKE CONCAT('%',#{query} ,'%') or fd_title LIKE CONCAT('%',#{query} ,'%'))
+        </if>
+    </select>
+
+
+
+    <select id="getQuestionAdmin" parameterType="list" resultType="QuestionVo">
+        SELECT B.pk_question,C.pk_question_type,C.fd_question_name, B.fd_title, B.fd_name, B.fd_mobile, B.fd_email, B.fd_reply_yn ,B.fd_regdate,  B.fd_reply_regdate
+        FROM tbl_question B
+        left join
+        tbl_question_type C ON (C.pk_question_type = B.fk_question_type)
+        WHERE 1=1
+        <if test="query!=''">
+        <choose>
+          <when test="type==''">
+              and(B.fd_content LIKE CONCAT('%',#{query} ,'%') or B.fd_title LIKE CONCAT('%',#{query} ,'%'))
+          </when>
+          <when test="type=='제목'">
+              and B.fd_title LIKE CONCAT('%',#{query},'%')
+          </when>
+          <when test="type=='내용'">
+              and B.fd_content LIKE CONCAT('%',#{query},'%')
+          </when>
+        </choose>
+        </if>
+
+        ORDER BY pk_question DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="getQuestionAdminCnt" resultType="Integer" >
+        SELECT COUNT(B.pk_question)
+        FROM tbl_question B
+        left join
+        tbl_question_type C ON (C.pk_question_type = B.fk_question_type)
+        WHERE 1=1
+        <if test="query!=''">
+            <choose>
+                <when test="type==''">
+                    and(B.fd_content LIKE CONCAT('%',#{query} ,'%') or B.fd_title LIKE CONCAT('%',#{query} ,'%'))
+                </when>
+                <when test="type=='제목'">
+                    and B.fd_title LIKE CONCAT('%',#{query},'%')
+                </when>
+                <when test="type=='내용'">
+                    and B.fd_content LIKE CONCAT('%',#{query},'%')
+                </when>
+            </choose>
+        </if>
+    </select>
+
+    <select id="getQuestionAdminDetail" resultType="QuestionVo">
+        SELECT B.pk_question,C.pk_question_type,C.fd_question_name, B.fd_title,B.fd_content, B.fd_name, B.fd_mobile, B.fd_reply_content,
+               B.fd_email, D.fd_agree_date, B.fd_reply_yn ,B.fd_regdate, B.fd_reply_regdate, E.user_name
+        FROM tbl_question B
+                 left join
+             tbl_question_type C ON (C.pk_question_type = B.fk_question_type)
+                 left join
+             tbl_terms_agree_question D ON (D.fk_question = B.pk_question)
+                 left join
+             tbl_admin_user E ON (E.pk_admin_user = B.fk_reply_writer)
+        WHERE pk_question= #{pk_question}
+    </select>
+
+    <select id="getQuestionAdminFiles" resultType="QuestionFileVo">
+        select * from tbl_question_file where fk_question = #{pk_question}
+    </select>
+
+    <update id="registerQuestionReply">
+        update tbl_question
+        set fd_reply_content = #{fd_reply_content} ,fk_reply_writer=#{fk_reply_writer}, fd_reply_yn='Y', fd_reply_regdate = now()
+        where pk_question= #{pk_question}
+    </update>
+
+    <delete id="deleteQuestion">
+        DELETE from tbl_question
+        where pk_question in
+        <foreach collection="questionIdList" item="item" index="index" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </delete>
+</mapper>

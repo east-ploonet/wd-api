@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.user.dao.UserDao">
+
+    <insert id="companyStaffSave" parameterType="UserReqBody" useGeneratedKeys="true" keyProperty="pk_company_staff">
+        insert
+        into tbl_company_staff
+        (user_type,
+         fd_staff_id,
+         fd_staff_email,
+         fd_staff_name,
+         fd_staff_mobile,
+         fd_staff_ci,
+         fd_staff_di,
+         fd_staff_mobile_type,
+         fd_staff_mobile_verify_dt,
+         fd_staff_gender_mf,
+         fd_staff_pw,
+         fk_company,
+         fd_regdate,
+         fd_company_master_yn,
+         fd_moddate,
+         fd_staff_level_code,
+         fd_staff_status_code,
+         fd_staff_birth)
+        values ('B2002',
+                #{fd_staff_id},
+                #{fd_staff_id},
+                #{fd_staff_name},
+                #{fd_staff_mobile},
+                #{fd_staff_ci},
+                #{fd_staff_di},
+                #{fd_staff_mobile_type},
+                #{fd_staff_mobile_verify_dt},
+                #{fd_staff_gender_mf},
+                #{fd_staff_pw},
+                #{pk_company},
+                now(),
+                'Y',
+                now(),
+                'A1001',
+                'A1101',
+                #{fd_staff_birth})
+    </insert>
+
+    <insert id="companySave" parameterType="UserReqBody" useGeneratedKeys="true" keyProperty="pk_company">
+        insert into tbl_company
+        (user_type,
+         fd_company_status_code,
+         fd_company_name,
+         fd_address_zipcode,
+         fd_address_common,
+         fd_address_detail,
+         fd_company_logo_file_path,
+         fd_company_logo_file_name,
+         fd_company_id)
+        values ('B2002',
+                'A1601',
+                #{fd_staff_name},
+                #{fd_address_zipcode},
+                #{fd_address_common},
+                #{fd_address_detail},
+                #{fd_company_logo_file_path},
+                #{fd_company_logo_file_name},
+                #{fd_company_id})
+
+    </insert>
+
+    <insert id="companyStaffTermsSave" parameterType="UserReqBody">
+        insert into tbl_terms_agree_staff
+        (
+        fk_terms,
+        fk_company_staff,
+        fd_agree_yn,
+        fd_agree_date
+        )values
+        <foreach collection="termsAgree" item="item" separator=",">
+            (
+            #{item.pk_terms},
+            #{pk_company_staff},
+            #{item.fd_agree_yn},
+            now()
+            )
+        </foreach>
+    </insert>
+
+    <select id="checkEmail" parameterType="String" resultType="CompanyStaffVo">
+        select fd_staff_id
+        from tbl_company_staff
+        where fd_staff_id = #{email}
+    </select>
+
+    <select id="checkNickName" parameterType="String" resultType="CompanyStaffVo">
+        select fd_company_id
+        from tbl_company
+        where fd_company_id = #{nickName}
+    </select>
+
+
+    <select id="getAllTerms" resultType="TermsVo">
+        select A.pk_terms
+             , A.fd_terms_target_code
+             , A.fd_terms_code
+             , A.fd_terms_title
+             , A.disp_order
+             , A.fd_terms_contents
+             , A.fd_terms_mandatory_yn
+             , A.fd_terms_open_date
+             , A.fd_open_yn
+             , A.fd_regdate
+             , A.fd_moddate
+        FROM tbl_terms A
+        where fd_open_yn = 'Y'
+          and terms_screen_cd = 'TS0001'
+          and fd_terms_target_code = 'A1702'
+        order by A.disp_order asc
+    </select>
+
+    <select id="getItems" resultType="StatisticVo">
+        select A.pk_statistic_item,
+               A.fk_statistic_group,
+               A.disp_order,
+               A.use_yn,
+               A.item_name,
+               A.input_yn,
+               B.select_type
+        from tbl_statistic_item A
+                 LEFT join tbl_statistic_group B
+                           ON (A.fk_statistic_group = B.pk_statistic_group)
+        where A.fk_statistic_group = 1
+
+    </select>
+    
+    <select id="getAivoice"  resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT      fd_staff_persona
+		FROM        tbl_company_staff
+		WHERE       fk_company                     = #{fkCompany}
+		AND         bot_display_yn                 = 'Y'
+        AND 		fd_staff_ai_yn 				   = 'Y'
+        LIMIT       1
+    </select>
+
+    <insert id="statisticSave" parameterType="UserReqBody">
+        insert into tbl_statistic_item_log
+        (fk_statistic_group,
+        fk_statistic_item,
+        fk_company,
+        fk_company_staff,
+        use_yn,
+        input_val,
+        fk_writer,
+        fd_regdate,
+        fk_modifier,
+        fd_moddate)
+        values
+        <foreach collection="statisticVoList" item="item" separator=",">
+            (
+            #{item.fk_statistic_group},
+            #{item.pk_statistic_item},
+            #{pk_company},
+            #{pk_company_staff},
+            'Y',
+            #{item.input_val},
+            #{pk_company_staff},
+            now(),
+            #{pk_company_staff},
+            now()
+            )
+        </foreach>
+    </insert>
+
+    <insert id="statisticMyPage" parameterType="UserReqBody">
+        insert into tbl_statistic_item_log
+        (fk_statistic_group,
+        fk_statistic_item,
+        fk_company,
+        fk_company_staff,
+        use_yn,
+        input_val,
+        fk_writer,
+        fd_regdate,
+        fk_modifier,
+        fd_moddate)
+        values
+        <foreach collection="statisticVoList" item="item" separator=",">
+            (
+            #{item.fk_statistic_group},
+            #{item.pk_statistic_item},
+            #{pk_company},
+            #{pk_company_staff},
+            'Y',
+            #{item.input_val},
+            #{pk_company_staff},
+            now(),
+            #{pk_company_staff},
+            now()
+            )
+        </foreach>
+    </insert>
+
+
+    <select id="getUserInfo" resultType="UserInfoVo">
+        select B.pk_company_staff, B.fd_staff_id, B.fd_staff_name, B.fd_staff_name, B.fd_staff_mobile, C.fd_company_id
+        from tbl_company_staff B
+                 LEFT join tbl_company C
+                           ON (C.pk_company = B.fk_company)
+
+        where pk_company_staff = #{loginCompanyStaffPk}
+    </select>
+
+
+    <select id="getTerm" resultType="TermsVo">
+        select *
+        from tbl_terms
+        where fd_terms_code = 'A2003'
+    </select>
+
+    <insert id="saveAdmin">
+        insert into tbl_company_staff ()
+    </insert>
+
+
+    <select id="getPassword" resultType="string">
+        select fd_staff_pw from tbl_company_staff where pk_company_staff=#{loginCompanyStaffPk}
+    </select>
+
+    <update id="updatePassword">
+        update tbl_company_staff
+        set fd_staff_pw =#{staffPw}
+        where pk_company_staff = #{loginCompanyStaffPk}
+    </update>
+
+    <select id="getSimbol" resultType="UserSimbolVo">
+        select  fd_company_logo_file_name, fd_company_logo_file_path
+        from tbl_company where pk_company = #{loginCompanyPk}
+    </select>
+    <select id="getCompanyId" resultType="string">
+        select fd_company_id from tbl_company where pk_company=#{pk_company}
+    </select>
+
+    <select id="checkBeforeSaveStaff" resultType="Long" parameterType="String">
+        select pk_company_staff from tbl_company_staff where fd_staff_id= #{email}
+    </select>
+</mapper>

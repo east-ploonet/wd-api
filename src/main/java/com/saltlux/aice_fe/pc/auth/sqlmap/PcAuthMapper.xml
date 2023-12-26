@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.auth.dao.PcAuthDao">
+
+    <select id="getCompanyStaffById" resultType="CompanyStaffVo">
+        SELECT
+            A.pk_company_staff
+             , A.fd_staff_id
+             , A.fd_staff_pw
+             , A.fd_staff_name
+             , A.user_type
+             , A.fd_staff_status_code
+             , A.fd_staff_level_code
+             , A.fd_company_master_yn
+             , B.pk_company
+             , B.fd_company_name
+             , B.fd_company_id
+             , B.fd_company_logo_file_path
+             , C.fd_name
+             , (
+            SELECT
+                BB.fd_dept_name
+            FROM
+                tbl_company_dept_staff AA
+                    INNER JOIN
+                tbl_company_dept BB ON (BB.pk_company_dept=AA.fk_company_dept)
+            WHERE
+                fk_company_staff = A.pk_company_staff
+            ORDER BY AA.fk_company_dept ASC
+            limit 1
+            ) AS fd_dept_name
+            , A.uuid
+
+        FROM    tbl_company_staff A
+            LEFT JOIN tbl_company B ON (B.pk_company = A.fk_company)
+            LEFT JOIN tbl_code C ON (C.pk_code = A.fd_staff_level_code)
+        WHERE   UPPER(A.fd_staff_id) = UPPER(#{fd_staff_id})
+            AND fd_staff_status_code = 'A1101' AND fd_staff_pw != '';
+    </select>
+
+	<select id="getCompanyStaffByKakao" resultType="CompanyStaffVo">
+        SELECT
+            A.pk_company_staff
+             , A.fd_staff_id
+             , A.fd_staff_pw
+             , A.fd_staff_name
+             , A.fd_staff_status_code
+             , B.pk_company
+             , B.fd_company_name
+             , B.fd_company_id
+             , B.fd_company_logo_file_path
+             , (
+            SELECT
+                BB.fd_dept_name
+            FROM
+                tbl_company_dept_staff AA
+                    INNER JOIN
+                tbl_company_dept BB ON (BB.pk_company_dept=AA.fk_company_dept)
+            WHERE
+                fk_company_staff = A.pk_company_staff
+            ORDER BY AA.fk_company_dept ASC
+            limit 1
+            ) AS fd_dept_name
+
+        FROM    tbl_company_staff A
+            LEFT JOIN
+            tbl_company B ON (B.pk_company = A.fk_company)
+        WHERE   A.fd_staff_ci = #{fd_staff_ci}
+            AND fd_company_master_yn = 'Y'
+            AND fd_staff_mobile_type = '카카오톡'
+    </select>
+
+	<select id="getCompanyStaffByPk" resultType="CompanyStaffVo">
+        SELECT
+                  A.pk_company_staff
+                , A.fd_staff_id
+                , A.fd_staff_pw
+                , A.fd_staff_name
+                , A.fd_staff_status_code
+                , A.fd_staff_level_code
+                , A.fd_staff_mobile
+                , B.pk_company
+                , B.fd_company_name
+                , B.fd_company_id
+                , B.fd_company_logo_file_path
+                , A.user_type
+                , C.fd_name role_name
+                , A.fd_signup_keycode
+                , A.fd_staff_mobile
+                , A.fd_staff_phone
+                , A.fd_staff_gender_mf
+                , (
+                    SELECT
+                        BB.fd_dept_name
+                    FROM
+                        tbl_company_dept_staff AA
+                            INNER JOIN
+                        tbl_company_dept BB ON (BB.pk_company_dept=AA.fk_company_dept)
+                    WHERE
+                        fk_company_staff = A.pk_company_staff
+                    ORDER BY AA.fk_company_dept ASC
+                    limit 1
+                ) AS fd_dept_name
+                , (
+                    SELECT
+                        CC.fd_staff_name
+                      FROM
+                        tbl_company_staff CC
+                     WHERE
+                        CC.fk_company = A.fk_company AND CC.fd_company_master_yn = 'Y'
+                        LIMIT 1
+                ) AS fd_company_master_staff_name,
+                A.uuid
+        FROM    tbl_company_staff A
+        INNER JOIN tbl_code C on C.pk_code = A.fd_staff_level_code
+                    LEFT JOIN
+                tbl_company B ON (B.pk_company = A.fk_company)
+        WHERE   A.pk_company_staff = #{pk_company_staff}
+
+    </select>
+    
+    <select id="getCompanyStaffByPkNoLevelCode" resultType="CompanyStaffVo">
+        SELECT
+                  A.pk_company_staff
+                , A.fd_staff_id
+                , A.fd_staff_pw
+                , A.fd_staff_name
+                , A.fd_staff_status_code
+                , A.fd_staff_level_code
+                , A.fd_staff_mobile
+                , B.pk_company
+                , B.fd_company_name
+                , B.fd_company_id
+                , B.fd_company_logo_file_path
+                , A.user_type
+                , A.fd_signup_keycode
+                , (
+                    SELECT
+                        BB.fd_dept_name
+                    FROM
+                        tbl_company_dept_staff AA
+                            INNER JOIN
+                        tbl_company_dept BB ON (BB.pk_company_dept=AA.fk_company_dept)
+                    WHERE
+                        fk_company_staff = A.pk_company_staff
+                    ORDER BY AA.fk_company_dept ASC
+                    limit 1
+                ) AS fd_dept_name
+                , (
+                    SELECT
+                        CC.fd_staff_name
+                      FROM
+                        tbl_company_staff CC
+                     WHERE
+                        CC.fk_company = A.fk_company AND CC.fd_company_master_yn = 'Y'
+                        LIMIT 1
+                ) AS fd_company_master_staff_name,
+                A.uuid
+        FROM    tbl_company_staff A
+                    LEFT JOIN
+                tbl_company B ON (B.pk_company = A.fk_company)
+        WHERE   A.pk_company_staff = #{pk_company_staff}
+
+    </select>
+
+    <update id="resetCompanyStaffTicketCode">
+        UPDATE  tbl_company_staff
+        SET     fd_signup_keycode = #{fd_signup_keycode}
+               ,fd_signup_keycode_ok_yn = 'N'
+               ,fd_signup_keycode_date = NOW()
+        WHERE   pk_company_staff    = #{pk_company_staff}
+    </update>
+	
+	
+	<insert id="updateAgree">
+     	INSERT INTO tbl_brand_terms
+		(
+		fk_company
+		, fk_company_staff
+		, terms_snum
+		, terms_cd
+		, terms_agree_yn
+		, fk_writer
+		, fd_regdate
+        )
+        VALUES
+        (
+        #{fkCompany}
+        , #{fkCompanyStaff}
+		, '1'
+		, 'M01F0'
+		, #{agreeValue}
+		, #{fkCompanyStaff}
+		, NOW()
+        )
+    </insert>
+	
+</mapper>

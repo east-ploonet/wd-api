@@ -1,0 +1,603 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.new_ojt.dao.NewOjtDao">
+	
+	<select id="getAvatarInfo" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+	select 
+		a.disp_name, a.fk_ai_policy_avatar_img
+	from tbl_ai_conf_avatar_img a
+	where a.fk_company_staff_ai = #{pkCompanyStaff}
+	and a.fk_company = #{fkCompany}
+	and a.part_type = 'face'
+	</select>
+	
+	<select id="getInfo" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+	select 
+		a.fd_company_name,
+		a.company_intro_msg,
+		a.ceo_name,
+		a.fd_company_phone,
+		a.company_email,
+		b.user_type
+	from tbl_company a
+	inner join tbl_company_staff b
+	on a.pk_company = #{fkCompany}
+	and b.pk_company_staff = #{pkCompanyStaff}
+	</select>
+	
+    <select id="getCompanyDnis" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.*
+		from tbl_company_dnis a
+		inner join tbl_ai_conf_work b
+		on a.fk_company = b.fk_company
+		and a.fk_company_staff_ai = b.fk_company_staff_ai
+		where a.fk_company = #{fkCompany}
+		and a.fk_company_staff_ai = #{fkCompanyStaffAi}
+		and fd_use_yn = 'Y'
+		and b.p_ai_work_cd is null
+	</select>
+    
+    <select id="getAiConfWorkDt" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select b.ai_work_cd, b.disp_name
+		from tbl_ai_conf_work a
+		inner join tbl_ai_policy_work b
+		on a.ai_work_cd = b.ai_work_cd
+		and b.p_ai_work_cd is null
+		where a.fk_company = #{fkCompany}
+		and a.fk_company_staff_ai = #{fkCompanyStaffAi}
+		and a.p_ai_work_cd is null
+	</select>
+    
+    <select id="getCompanyDetp" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.pk_company_dept, a.fk_company, a.fd_dept_name
+		from tbl_company_dept a
+		where a.fk_company = #{fkCompany}
+		and a.fd_dept_name = #{dispName}
+	</select>
+	
+    
+    
+    <select id="getBotStatusCount" resultType="int">
+        SELECT count(1) cnt
+		FROM   tbl_ai_conf_work
+		WHERE  fk_company_staff_ai = #{fkCompanyStaffAi}
+		AND fk_company = #{fkCompany}
+		AND bot_status = #{botStatus}
+		<!-- AND front_status = #{frontStatus} -->
+		AND p_ai_work_cd IS NULL
+    </select>
+    
+    <update id="aiConfWorkStatusUpdate">
+     	update tbl_ai_conf_work
+		set
+			front_status = #{frontStatus}
+			, fd_moddate = NOW()
+      	where fk_company = #{fkCompany}
+      	AND fk_company_staff_ai = #{fkCompanyStaffAi}
+      	<if test="botStatus != null">AND bot_status = #{botStatus}</if>
+      	AND p_ai_work_cd IS NULL
+    </update>
+    
+    <update id="companyUpdate">
+     	update tbl_company
+		set
+			fd_company_name = #{fdCompanyName},
+			fd_company_phone = #{fdCompanyPhone},
+			company_intro_msg = #{companyIntroMsg},
+			ceo_name = #{ceoName},
+			fk_modifier = #{fkWriter},
+			company_email = #{companyEmail},
+			fd_moddate = NOW()
+      	where pk_company = #{fkCompany}
+    </update>
+    
+    <update id="aiStaffStatusUpdate">
+     	update tbl_company_staff
+		set
+			fd_staff_status_code = #{fdStaffStatusCode},
+			fk_modifier = #{fkWriter},
+			fd_moddate = NOW()
+      	where pk_company_staff = #{pkCompanyStaff}
+    </update>
+    
+    <delete id="companyTimeDelete">
+     	Delete from tbl_ai_conf_day_on
+		where
+	      	fk_company = #{fkCompany}
+		and week_num = #{weekNum}
+    </delete>
+    
+    <select id="getCompanyTime" resultType="int">
+        SELECT IFNULL (MAX(A.pk_ai_conf_day_on),0)
+        FROM tbl_ai_conf_day_on A
+        WHERE A.fk_company = #{fkCompany}
+        and fk_company_staff_ai = #{fkCompanyStaffAi}
+        and week_num = #{weekNum}
+        and time_type = #{timeType}
+    </select>
+    
+    <insert id="companyTimeInsert">
+     	INSERT INTO tbl_ai_conf_day_on
+		(
+		<if test="pk_ai_conf_day_on != null and pk_ai_conf_day_on > 0">pk_ai_conf_day_on, </if>
+		fk_company
+		, fk_company_staff_ai
+		, week_num
+		, time_from_hh
+		, time_from_min
+		, time_to_hh
+		, time_to_min
+		, work_type
+		, time_type
+		, use_yn
+		, fk_writer
+		, fd_regdate
+        )
+        VALUES
+        (
+        <if test="pk_ai_conf_day_on != null and pk_ai_conf_day_on > 0">#{pk_ai_conf_day_on}, </if>
+        #{fkCompany}
+        , #{fkCompanyStaffAi}
+		, #{weekNum}
+		, #{timeFromHh}
+		, #{timeFromMin}
+		, #{timeToHh}
+		, #{timeToMin}
+		, #{workType}
+		, #{timeType}
+		, #{useYn}
+		, #{fkWriter}
+		, NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+			time_from_hh = #{timeFromHh}
+			, time_from_min = #{timeFromMin}
+			, time_to_hh = #{timeToHh}
+			, time_to_min = #{timeToMin}
+<!-- 			, work_type = #{workType} -->
+<!-- 			, time_type = #{timeType} -->
+<!-- 			, enable_yn = #{enableYn} -->
+			, fd_moddate = now()
+    </insert>
+    
+    <delete id="aiTimeDelete">
+     	Delete from tbl_ai_conf_day_on
+		where
+	      	fk_company = #{fkCompany}
+	    and fk_company_staff_ai = #{fkCompanyStaffAi}
+		and week_num != 99
+<!-- 		and work_type = "W" -->
+    </delete>
+    
+     <select id="getAiTime" resultType="int">
+        SELECT IFNULL (MAX(A.pk_ai_conf_day_on),0)
+        FROM tbl_ai_conf_day_on A
+        WHERE A.fk_company = #{fkCompany}
+        and fk_company_staff_ai = #{fkCompanyStaffAi}
+        and week_num = #{weekNum}
+    </select>
+    
+    <insert id="aiTimeInsert">
+     	INSERT INTO tbl_ai_conf_day_on
+		(
+		<if test="pk_ai_conf_day_on != null and pk_ai_conf_day_on > 0">pk_ai_conf_day_on, </if>
+		fk_company
+		, fk_company_staff_ai
+		, week_num
+		, time_from_hh
+		, time_from_min
+		, time_to_hh
+		, time_to_min
+		, work_type
+		, time_type
+		, use_yn
+		, enable_yn
+		, fk_writer
+		, fd_regdate
+        )
+        VALUES
+        (
+        <if test="pk_ai_conf_day_on != null and pk_ai_conf_day_on > 0">#{pk_ai_conf_day_on}, </if>
+        #{fkCompany}
+        , #{fkCompanyStaffAi}
+		, #{weekNum}
+		, #{timeFromHh}
+		, #{timeFromMin}
+		, #{timeToHh}
+		, #{timeToMin}
+		, #{workType}
+		, #{timeType}
+		, #{useYn}
+		, #{enableYn}
+		, #{fk_writer}
+		, NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+			time_from_hh = #{timeFromHh}
+			, time_from_min = #{timeFromMin}
+			, time_to_hh = #{timeToHh}
+			, time_to_min = #{timeToMin}
+			, work_type = #{workType}
+			, time_type = #{timeType}
+			, enable_yn = #{enableYn}
+			, fd_moddate = now()
+    </insert>
+    
+    
+    
+    <delete id="companyIntroDelete">
+    	delete from tbl_ai_conf_intro where fk_company = #{fkCompany} 
+    	and fk_company_staff_ai = #{fkCompanyStaffAi}
+    </delete>
+
+	<select id="getCompanyIntro" resultType="int">
+		SELECT IFNULL (MAX(A.pk_ai_conf_intro),0)
+		FROM tbl_ai_conf_intro A
+		WHERE A.fk_company = #{fkCompany}
+		and fk_company_staff_ai = #{fkCompanyStaffAi}
+	</select>
+    
+    <!-- 인사말 등록 및 수정 -->
+    <insert id="companyIntroUpdate">
+	INSERT INTO tbl_ai_conf_intro (
+		<if test="pk_ai_conf_intro != null and pk_ai_conf_intro > 0">pk_ai_conf_intro, </if>
+		fk_company
+		, fk_company_staff_ai
+		, msg_before
+		, msg_body
+		, msg_body2
+		, msg_body3
+		, msg_body4
+		, msg_body5
+		, msg_body6
+		, default_yn
+		, warn_yn
+		, use_yn
+		, fk_writer
+		, fd_regdate
+	) 
+	VALUE(
+		<if test="pk_ai_conf_intro != null and pk_ai_conf_intro > 0">#{pk_ai_conf_intro}, </if>
+		  #{fkCompany}
+		, #{fkCompanyStaffAi}
+		, #{msgBefore}
+		, #{msgBody}
+		, #{msgBody2}
+		, #{msgBody3}
+		, #{msgBody4}
+		, #{msgBody5}
+		, #{msgBody6}
+		, #{defaultYn}
+		, #{warnYn}
+		, #{useYn}
+		, #{fkWriter}
+		, NOW()
+	)
+		ON DUPLICATE KEY UPDATE
+		msg_before = #{msgBefore}
+		, msg_body = #{msgBody}
+		, msg_body2 = #{msgBody2}
+		, msg_body3 = #{msgBody3}
+		, msg_body4 = #{msgBody4}
+		, msg_body5 = #{msgBody5}
+		, msg_body6 = #{msgBody6}
+		, default_yn = #{defaultYn}
+		, warn_yn = #{warnYn}
+		, fk_modifier = #{fkModifier}
+		, fd_moddate = now()
+    </insert>
+	
+	<select id="getIntro" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+	select 
+		a.pk_ai_conf_intro,
+		a.fk_company_staff_ai,
+		a.msg_before,
+		a.msg_body,
+		a.msg_body2,
+		a.msg_body3,
+		a.msg_body4,
+		a.msg_body5,
+		a.msg_body6,
+		a.default_yn,
+		a.warn_yn,
+		a.use_yn
+	from tbl_ai_conf_intro a
+	where a.fk_company = #{fkCompany}
+	and a.fk_company_staff_ai = #{pkCompanyStaff} 
+	</select>
+	
+	<select id="getOfficeTimeList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+	    select *, week_num -1 as new_week_num
+	    from tbl_ai_conf_day_on
+	    where fk_company = #{fkCompany}
+	    and fk_company_staff_ai = #{pkCompanyStaff}
+	    and work_type = 'W'
+	    and week_num &lt;&gt; 99
+		order by week_num
+    </select>
+    
+    <select id="getCompanyTimeList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+	    select time_from_hh, time_from_min, time_to_hh, time_to_min, work_type, time_type
+		from tbl_ai_conf_day_on 
+		where fk_company = #{fkCompany}
+		and week_num = 99
+    </select>
+	
+	<!-- step 1,2 조회 -->
+    <select id="getStepOneTwo" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+    	select ai_work_cd,p_ai_work_cd from tbl_ai_conf_work where fk_company = #{fkCompany} 
+    	and fk_company_staff_ai = #{fkCompanyStaffAi}
+    	and p_ai_work_cd is not null
+    </select>
+    
+    <select id="getStepOneTwoNull" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+    	select ai_work_cd,p_ai_work_cd from tbl_ai_conf_work where fk_company = #{fkCompany} 
+    	and fk_company_staff_ai = #{fkCompanyStaffAi}
+    </select>
+    
+    <!-- step 3,4 조회 -->
+    <select id="getStepThreeFour" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+    	select * from tbl_ai_conf_work_task where fk_company = #{fkCompany} 
+    	and fk_company_staff_ai = #{fkCompanyStaffAi}
+    </select>
+    
+    <!-- step 3,4 조회 (안내데스크 주소 항목 가져오기)-->
+    <select id="getStepThreeFourAddress" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+    	select fd_address_zipcode,
+    		   fd_address_common,
+    		   fd_address_detail,
+    		   company_parking_msg 
+    	from tbl_company where pk_company = #{fkCompany} 
+    </select>
+	
+	<select id="getExcelUploadCount" resultType="int">
+        SELECT count(1) cnt
+		FROM   tbl_ai_conf_work_task
+		WHERE  fk_company_staff_ai = #{fkCompanyStaffAi}
+		AND    ai_work_cd             = #{aiWorkCd}
+		AND    p_ai_work_cd           = #{pAiWorkCd}
+    </select>
+	
+	<!-- 신규등록 -->
+    <select id="getStepList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.ai_work_cd, 
+	   		   a.p_ai_work_cd, 
+       		   a.disp_name
+       		   from tbl_ai_policy_work a     	  
+    </select>
+    
+    <!-- step 1,2 저장 -->
+    <insert id="ojt2StepOneTwoRegist">
+    	INSERT INTO tbl_ai_conf_work
+    	(
+    		fk_company
+    		,fk_company_staff_ai
+    		,ai_work_cd
+    		,p_ai_work_cd
+    		,enable_yn
+    		,use_yn
+    		,fk_writer
+    		,fd_regdate
+    		,fk_modifier
+    		,fd_moddate
+    		,front_status
+    		<if test="bot_status != null">,bot_status</if>
+    	)
+    	VALUES
+    	(
+    	#{fk_company}
+    	, #{fk_comapny_staff_ai}
+    	, #{ai_work_cd}
+    	, #{p_ai_work_cd}
+    	,'Y'
+    	,'Y'
+    	, #{fk_writer}
+    	, now()
+    	, #{fk_writer}
+    	, now()
+    	, #{front_status}
+    	<if test="bot_status != null">,#{bot_status}</if>
+    	)
+    </insert>
+    <!-- step 3,4 저장 -->
+    <insert id="ojt2StepThreeFourRegist">
+    	INSERT INTO tbl_ai_conf_work_task
+    	(
+    		fk_company
+    		,fk_company_staff_ai
+    		,ai_work_cd
+    		,p_ai_work_cd
+    		,enable_yn
+    		,member_name
+    		,member_phone
+    		,member_mobile
+    		,path_file
+    		,use_yn
+    		,term_unit
+    		,term_val
+    		,task_val
+    		,fk_writer
+    		,fd_regdate
+    		,fk_modifier
+    		,fd_moddate
+    	)
+    	VALUES
+    	(
+    	#{fk_company}
+    	, #{fk_comapny_staff_ai}
+    	, #{ai_work_cd}
+    	, #{p_ai_work_cd}
+    	, #{enable_yn}
+    	, #{member_name}
+    	, #{member_phone}
+    	, #{member_mobile}
+    	, #{path_file}
+    	,'Y'
+    	, #{term_unit}
+    	, #{term_val}
+    	, #{task_val}
+    	, #{fk_writer}
+    	, now()
+    	, #{fk_writer}
+    	, now()
+    	)
+    </insert>
+    
+    <update id="ojt2StepThreeFourRegistAddress" parameterType="UserReqBody" useGeneratedKeys="true" keyProperty="pk_company">
+        update tbl_company set
+			fd_address_zipcode = #{fd_address_zipcode},
+			fd_address_common = #{fd_address_common},
+			fd_address_detail = #{fd_address_detail},
+			company_parking_msg = #{company_parking_msg}
+		where pk_company = #{fk_company}
+    </update>
+    
+    <!-- step 1,2 초기화 -->
+    <delete id="ojt2StepOneTwoDelete">
+    	delete from tbl_ai_conf_work where fk_company = #{fkCompany} 
+    	and fk_company_staff_ai = #{fkCompanyStaffAi}
+    </delete>
+    
+    <!-- step 3,4 초기화 -->
+    <delete id="ojt2StepThreeFourDelete">
+    	delete from tbl_ai_conf_work_task where fk_company = #{fkCompany} 
+    	and fk_company_staff_ai = #{fkCompanyStaffAi}
+    </delete>
+    
+    <!-- step excel upload delete -->
+    <delete id="ojtErrorDataDelete">
+    	delete from tbl_ai_conf_work_task where fk_company = #{fkCompany} 
+    	and fk_company_staff_ai = #{fkCompanyStaffAi}
+    	and ai_work_cd = #{aiWorkCd}
+    	and p_ai_work_cd = #{pAiWorkCd}
+    </delete>
+    
+    <!-- 채용 완료 시, step3 -->
+    <select id="getTimeOrientation" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+			select group_concat(week order by week_num asc) week_name,
+			       time_from_hh,
+			       time_from_min,
+			       time_to_hh,
+			       time_to_min,
+			       week_num
+			from   ( select
+                CASE week_num
+                         WHEN '1'
+                         THEN '일'
+                         WHEN '2'
+                         THEN '월'
+                         WHEN '3'
+                         THEN '화'
+                         WHEN '4'
+                         THEN '수'
+                         WHEN '5'
+                         THEN '목'
+                         WHEN '6'
+                         THEN '금'
+                         WHEN '7'
+                         THEN '토'
+                END AS week,
+                time_from_hh,
+                time_from_min,
+                time_to_hh,
+                time_to_min,
+                week_num
+       from     tbl_ai_conf_day_on
+       where    fk_company_staff_ai = #{pkCompanyStaff}
+       and      work_type           = 'W'
+
+       group by week,time_from_hh,
+                time_from_min,
+                time_to_hh,
+                time_to_min
+                order by week_num
+       )sa
+		where sa.week is not null
+		group by time_from_hh, time_from_min, time_to_hh, time_to_min
+		order by week_num
+    </select>
+    
+    <!-- 초기 값 가져오기(업무 수정 부분) -->
+    <select id="profileCard" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select g.pk_company_staff,
+		       /* 기본정보 스태프 */
+		       g.fd_staff_name,
+		       /* 기본정보 스태프 */
+		       f.full_dnis,
+		       /* ai 연락처  */
+		       b.disp_name,
+		       e.pk_company_staff as dept_staff,
+		       /* 변경했을때 정보 해당 데이터 null이 아니면 이 컬럼 표시  */
+		       e.fd_staff_name as dept_staff_name,
+		       /* 변경했을때 정보 해당 데이터 null이 아니면 이 컬럼 표시  */
+		       c.fd_dept_name
+		       /* ai 직무   */
+		from   aice.tbl_ai_conf_work a
+		       inner join tbl_ai_policy_work b
+		       on     a.ai_work_cd = b.ai_work_cd
+		       left outer join tbl_company_dept c
+		       on     b.disp_name = c.fd_dept_name
+		       left outer join tbl_company_dept_staff d
+		       on     c.pk_company_dept = d.fk_company_dept
+		       left outer join tbl_company_staff e
+		       on     d.fk_company_staff = e.pk_company_staff
+		       left outer join tbl_company_dnis f
+		       on     c.fk_company          = f.fk_company
+		       and    f.fk_company_staff_ai = #{pkCompanyStaff}
+		       left outer join tbl_company_staff g
+		       on     c.fk_company           = g.fk_company
+		       and    g.fd_company_master_yn = 'Y'
+		where  a.fk_company_staff_ai         = #{pkCompanyStaff}
+		and    a.p_ai_work_cd          is null
+		and    b.p_ai_work_cd          is null
+		and    c.fk_company                  = #{fkCompany}
+    </select>
+    
+    <select id="profileCardInfo" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+	    SELECT A.pk_company_staff ,
+	       A.fk_company ,
+	       A.fd_staff_name ,
+	       A.fd_staff_ai_uid ,
+	       A.user_type ,
+	       B.fk_company_staff_ai ,
+	       B.fd_dnis ,
+	       B.full_dnis ,
+	       B.vgw_id,
+	       E.disp_name AS staff_work_code_name,
+	       G.fk_ai_policy_avatar_img,
+	       G.disp_name
+	FROM   tbl_company_staff A
+	       LEFT JOIN tbl_company_dnis B
+	       ON     A.pk_company_staff = B.fk_company_staff_ai
+	       AND    A.fk_company       = B.fk_company
+	       LEFT OUTER JOIN tbl_ai_conf_work D
+	       ON     A.pk_company_staff = D.fk_company_staff_ai
+	       LEFT OUTER JOIN tbl_ai_policy_work E
+	       ON     D.ai_work_cd   = E.ai_work_cd
+	       AND    D.ai_work_cd = E.ai_work_cd
+	       LEFT OUTER JOIN tbl_ai_conf_avatar_img G
+		   ON     A.pk_company_staff = G.fk_company_staff_ai
+	       AND    A.fk_company       = G.fk_company
+		   AND G.part_type = 'face'
+	
+		WHERE  A.fd_staff_ai_yn      = 'Y'
+		AND    A.fk_company          = #{fkCompany}
+		AND    D.fk_company_staff_ai = #{pkCompanyStaff}
+		AND    E.disp_name is not NULL
+	    AND    D.p_ai_work_cd is null
+    </select>
+    
+    <select id="profileCardDefault" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+       select h.fd_staff_name
+       from  tbl_company_staff h
+       where     h.fk_company = #{fkCompany}
+       and    h.fd_company_master_yn = 'Y'
+    </select> 
+    
+    <select id="getAiConfWork" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+	    select *
+	    from tbl_ai_conf_work
+	    where fk_company = #{fkCompany}
+    </select>
+    
+</mapper>

@@ -1,0 +1,428 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.channel.dao.ChannelDao">
+	
+    <select id="getInfo" resultType="ChannelTelVo">
+        select pk_tel_line
+        	  ,fd_phone
+        	  ,fd_phone_num1
+        	  ,fd_phone_num2
+        	  ,fd_channel_name
+        	  ,fd_company_name
+        	  ,fd_usage_status
+        	  ,fd_approve
+        	  ,fd_nationwide
+        	  ,fd_regdate
+        from tbl_chl_tel_line
+        where fk_company = #{loginCompanyPk}
+    </select>
+    
+    <select id="getInfoSelectOne" resultType="ChannelTelVo">
+        select *
+        from tbl_chl_tel_line
+        where fk_company = #{loginCompanyPk}
+        and fd_approve ='APP02';
+    </select>
+    
+    <select id="getInfoSelectTwo" resultType="ChannelTelVo">
+        select *
+        from tbl_chl_tel_line
+        where fk_company = #{loginCompanyPk}
+        and fd_approve ='APP03';
+    </select>
+    
+    <select id="getModInfo" resultType="ChannelTelVo">
+        select pk_tel_line
+		     , fk_company
+		     , fd_phone
+		     , fd_nationwide
+		     , fd_phone_num1
+		     , fd_phone_num2
+		     , fd_approve
+		     , fd_company_name
+		     , fd_channel_name
+		     , fk_writer
+		     , fd_regdate
+		     , fk_modifier
+		     , fd_moddate
+        from tbl_chl_tel_line
+        where pk_tel_line = #{pk_tel_line}
+    </select>
+    
+    <update id="updateModeInfo">
+    	UPDATE tbl_chl_tel_line
+			set fd_company_name = #{fd_company_name},
+    		fd_channel_name = #{fd_channel_name}, 
+    		fd_nationwide = #{fd_nationwide},
+    		fd_regdate = now()
+    	where pk_tel_line = #{pk_tel_line}
+    </update>
+    
+    <insert id="registModeInfo">
+		insert into tbl_chl_tel_line 
+		(
+			fk_company
+			, fd_phone
+			,fd_approve
+			, fd_nationwide
+			, fd_company_name  
+            , fd_channel_name
+            , fd_regdate  
+		) values 
+		(
+		#{fk_company},
+		#{fd_phone},
+		"APP03",
+		#{fd_nationwide},
+		#{fd_company_name},
+		#{fd_channel_name},
+		now()
+		)
+    </insert>
+    <insert id="registModeInfoFile">
+		insert into tbl_chl_tel_line_file 
+		(
+			fk_company
+			,fd_file_name
+			,fd_mime_code
+			,fd_file_size
+			,fd_file_path
+			,fd_regdate
+		) values 
+		(
+		#{fk_company},
+		#{fd_file_name},
+		#{fd_mime_code},
+		#{fd_file_size},
+		#{fd_file_path},
+		now()
+		)
+    </insert>
+        
+    <delete id="deleteModeInfo">
+    	delete from tbl_chl_tel_line where pk_tel_line = #{pk_tel_line}
+    </delete>
+    
+    <update id="updateModeInfoFile">
+    	UPDATE tbl_chl_tel_line_file
+			set fd_file_name = #{fd_file_name},
+    		fd_file_path = #{fd_file_path}, 
+    		fd_regdate = now()
+    	where fk_company = #{fk_company}
+    </update>
+    
+    <insert id="emailRegist">
+        INSERT INTO tbl_email_management
+        (
+		 fk_company
+<!-- 		, fk_company_staff  // modifier 혹은 writer 랑 동일-->
+		, fd_host
+		, fd_account_name
+		, fd_use
+		, fd_usage_status
+		, fd_mailing_protocol
+		
+		, fd_email
+		, fd_pw
+		, fd_server
+		, fd_port
+		
+		, fd_smtp_crtfc
+		, fd_smtp_tls
+		, fd_smtp_ssl
+		, fd_pop_ssl
+		, fd_imap_ssl
+		
+<!-- 		, fk_modifier -->
+		, fk_writer
+		, fd_regdate
+<!-- 		, fd_moddate -->
+        )
+        VALUES
+        (
+		 #{fk_company}
+<!-- 		, #{fk_company_staff} -->
+		, #{fd_host}
+		, #{fd_account_name}
+		, #{fd_use}
+		, #{fd_usage_status}
+		, #{fd_mailing_protocol}
+		
+		, #{fd_email}
+		, #{fd_pw}
+		, #{fd_server}
+		, #{fd_port}
+		
+		, #{fd_smtp_crtfc}
+		, #{fd_smtp_tls}
+		, #{fd_smtp_ssl}
+		, #{fd_pop_ssl}
+		, #{fd_imap_ssl}
+		
+<!-- 		, #{fk_modifier} -->
+		, #{fk_writer}
+		, now()
+<!-- 		, now() -->
+        )
+    </insert>
+    
+    <update id="emailUpdate">
+        UPDATE  tbl_email_management
+        SET
+        
+		 fk_company = #{fk_company}
+<!-- 		, fk_company_staff  // modifier 혹은 writer 랑 동일-->
+		, fd_host = #{fd_host}
+		, fd_account_name = #{fd_account_name}
+		, fd_use = #{fd_use}
+		, fd_usage_status = #{fd_usage_status}
+		, fd_mailing_protocol = #{fd_mailing_protocol}
+		
+		, fd_email = #{fd_email}
+		, fd_pw = #{fd_pw}
+		, fd_server = #{fd_server}
+		, fd_port = #{fd_port}
+		
+		, fd_smtp_crtfc = #{fd_smtp_crtfc}
+		, fd_smtp_tls = #{fd_smtp_tls}
+		, fd_smtp_ssl = #{fd_smtp_ssl}
+		, fd_pop_ssl = #{fd_pop_ssl}
+		, fd_imap_ssl = #{fd_imap_ssl}
+		
+		, fk_modifier = #{fk_modifier}
+<!-- 		, fk_writer -->
+<!-- 		, fd_regdate -->
+		, fd_moddate = now()
+        WHERE
+        	pk_email_management = #{pk_email_management}
+       
+    </update>
+    
+    
+    <select id="getEmailList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		<choose>
+			<when test="pkEmailManagement != null">
+				select 
+					a.pk_email_management, a.fk_company, a.fd_host,
+					a.fd_account_name, a.fd_use, a.fd_usage_status, a.fd_mailing_protocol,
+					a.fd_email, a.fd_server, a.fd_port, a.fd_smtp_crtfc,
+					a.fd_smtp_tls, a.fd_smtp_ssl, a.fd_pop_ssl, a.fd_imap_ssl,
+					a.fk_modifier, a.fk_writer, a.fd_regdate, a.fd_moddate			
+			</when>
+			<otherwise>
+				select a.pk_email_management, a.fd_account_name, a.fd_mailing_protocol, a.fd_usage_status, a.fd_use, a.fd_regdate, a.fd_email	
+			</otherwise>
+		</choose>
+		from tbl_email_management a 
+		where a.fk_company = #{fkCompany}
+		<if test="pkEmailManagement != null">
+		and a.pk_email_management = #{pkEmailManagement}
+		</if>
+		<choose>
+			<when test="select == 'incoming'">
+				and a.fd_mailing_protocol != '1'
+			</when>
+			<when test="select == 'outgoing'">
+				and a.fd_mailing_protocol = '1'
+			</when>
+		</choose>
+		LIMIT 2
+        <if test="page !='' and page != null">
+            OFFSET ${(page -1) * 2}
+        </if>
+		
+	</select>
+	
+	<select id="emailCnt" resultType="Integer">
+		select count(*) as totalCnt
+		from tbl_email_management a 
+		where a.fk_company = #{fkCompany}
+	</select>
+	
+	<select id="tranCnt" resultType="Integer">
+		select count(*) as totalCnt
+		from tbl_company_biz_phone a
+		where a.fk_company = #{fkCompany}
+	</select>
+    
+    
+    <select id="getDeptList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.fd_dept_name, a.pk_company_dept
+		from tbl_company_dept a 
+		where a.fk_company = #{fkCompany}
+		and a.fd_use_yn = 'Y'
+	</select>
+	
+	<select id="getStaffList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.pk_company_staff, a.fd_staff_name, a.fd_staff_mobile
+		from tbl_company_staff a
+		inner join tbl_company_dept_staff b
+		on b.fk_company_staff = a.pk_company_staff
+		<choose>
+			<when test="select == 'all'">
+				where a.fk_company = #{fkCompany}
+			</when>
+			<otherwise>
+				where b.fk_company_dept = #{select}
+			</otherwise>
+		</choose>
+		and a.fd_staff_ai_yn = 'N'
+	</select>
+	
+	
+	<select id="getTranList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.*
+		from tbl_company_biz_phone a 
+		where a.fk_company = #{fkCompany}
+		<choose>
+			<when test="pkTranManagement != null">
+				and a.pk_company_phone = #{pkTranManagement}
+			</when>
+		</choose>
+		order by fd_regdate desc
+		LIMIT 5
+        <if test="page !='' and page != null">
+            OFFSET ${(page -1) * 5}
+        </if>
+	</select>
+	
+	<select id="getFdNationwide" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.pk_company_phone, a.biz_phone_num
+		from tbl_company_biz_phone a 
+		where a.fk_company = #{fkCompany}
+        and a.default_yn = "Y"
+	</select>
+	
+	<select id="getTranListTotal" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.biz_phone_num
+		from tbl_company_biz_phone a 
+		where a.fk_company = #{fkCompany}
+	</select>
+		
+	<insert id="tranRegist">
+        INSERT INTO tbl_company_biz_phone
+        (
+		
+		 fk_company 
+		 , user_type
+		, biz_phone_name
+		, biz_phone_num
+		, doc_main_status
+		, file_path_main_num
+		, default_yn
+		,biz_cate_step_1
+		,biz_cate_step_2
+		,biz_cate_step_3
+		, enable_yn
+		, fk_writer
+		, fd_regdate
+		, reg_status
+        )
+        VALUES
+        (
+		 #{settingTranVo.fk_company}
+		, #{settingTranVo.user_type}
+		, #{settingTranVo.fd_tarn_name}
+		, #{settingTranVo.fd_tarn_num}
+		, #{settingTranVo.doc_main_status}
+		, #{settingTranVo.file_path_main_num}
+		, #{settingTranVo.fd_nationwide}
+		,'사용안함'
+		,'사용안함'
+		,'사용안함'
+		, #{settingTranVo.fd_use}
+		, #{settingTranVo.fk_writer}
+		, now()
+		, #{settingTranVo.reg_status}
+
+        )
+         <selectKey keyProperty="pk_company_phone" resultType="long" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+    </insert>
+    
+    <update id="tranUpdate">
+        UPDATE  tbl_company_biz_phone
+        SET    
+		 fk_company = #{fk_company}
+<!-- 	, fk_company_staff  // modifier 혹은 writer 랑 동일-->
+		, biz_phone_name = #{fd_tarn_name}
+		, biz_phone_num = #{fd_tarn_num}
+		, default_yn = #{fd_nationwide}
+		, enable_yn = #{fd_use}		
+		, fk_modifier = #{fk_modifier}
+<!-- 		, fk_writer -->
+<!-- 		, fd_regdate -->
+		, fd_moddate = now()
+        WHERE
+        	pk_company_phone = #{pk_tran_management}
+       
+    </update>
+    
+    <update id="tranUpdateAll">
+        UPDATE  tbl_company_biz_phone
+        SET    
+		 fk_company = #{fk_company},
+         default_yn = 'N'
+       , fd_moddate = now()
+       where fk_company = #{fk_company}
+       
+    </update>
+    
+    <delete id="tranDelete">
+    	delete from tbl_company_biz_phone where pk_company_phone = #{pk_tran_management}
+    </delete>
+    
+    <insert id="tranFileRegist">
+        INSERT INTO tbl_tran_file
+        (
+
+		 fk_tran_management
+		, fk_company  
+		, fd_file_name
+		, fd_file_size
+		, fd_file_path
+		, fk_writer
+		, fd_regdate
+<!-- 		, fk_modifier -->
+<!-- 		, fd_moddate -->
+        )
+        VALUES
+        (
+		 #{fk_tran_management}
+		, #{fk_company}
+		, #{fd_file_name}
+		, #{fd_file_size}
+		, #{fd_file_path}
+		, #{fk_writer}
+		, now()
+
+        )
+    </insert>
+    
+    <delete id="tranFileDelete">
+        Delete 
+        from tbl_tran_file
+        WHERE
+        	fk_tran_management = #{fk_tran_management}
+        	and delete_flg= 'Y'
+    </delete>
+    
+    <update id="tranFileDeleteFlag">
+        UPDATE tbl_tran_file
+		  SET
+			delete_flg= 'Y'  
+		WHERE fk_tran_management = #{fk_tran_management}
+    </update>
+    
+    
+    <select id="getSendEmail" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.fd_email	
+		from tbl_email_management a 
+		where a.fk_company = #{fkCompany}
+		and a.fd_mailing_protocol = '1'
+		and a.fd_usage_status = 'Y'
+		
+	</select>
+        
+</mapper>

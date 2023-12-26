@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.send.dao.SendDao">
+	
+	<select id="getCustomerInfo" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.*
+		from tbl_company_customer a
+		where a.fk_company = #{fkCompany}
+		and a.pk_company_customer = #{pkCompanyCustomer}
+	</select>
+    
+    <insert id="companyCustomerUpdate">
+		INSERT INTO tbl_company_customer (
+			<if test="pk_company_customer > 0">pk_company_customer, </if>
+			fk_company
+			, fd_customer_name
+			, fd_company_name
+			, fd_company_dept
+			, fd_company_position
+			, fd_customer_mobile
+			, fd_customer_phone
+			, fd_customer_email
+			, fd_company_address_common
+			, fd_company_address_detail
+			, fd_additional_information
+			, fd_customer_address_common
+			, fd_customer_address_detail
+			, fk_writer
+			, fd_regdate
+		) 
+		VALUE(
+			<if test="pk_company_customer > 0">#{pk_company_customer}, </if>
+			#{fk_company}
+			, #{fd_customer_name}
+			, #{fd_company_name}
+			, #{fd_company_dept}
+			, #{fd_company_position}
+			, #{fd_customer_mobile}
+			, #{fd_customer_phone}
+			, #{fd_customer_email}
+			, #{fd_company_address_common}
+			, #{fd_company_address_detail}
+			, #{fd_additional_information}
+			, #{fd_customer_address_common}
+			, #{fd_customer_address_detail}
+			, #{fk_writer}
+			, now()
+		)
+		ON DUPLICATE KEY UPDATE
+			fk_company = #{fk_company}
+			, fd_customer_name = #{fd_customer_name}
+			, fd_company_name = #{fd_company_name}
+			, fd_company_dept = #{fd_company_dept}
+			, fd_company_position = #{fd_company_position}
+			, fd_customer_mobile = #{fd_customer_mobile}
+			, fd_customer_phone = #{fd_customer_phone}
+			, fd_customer_email = #{fd_customer_email}
+			, fd_company_address_common = #{fd_company_address_common}
+			, fd_company_address_detail = #{fd_company_address_detail}
+			, fd_additional_information = #{fd_additional_information}
+			, fd_customer_address_common = #{fd_customer_address_common}
+			, fd_customer_address_detail = #{fd_customer_address_detail}
+			, fk_modifier = #{fk_modifier}
+			, fd_moddate = now()
+    </insert>
+    
+    <select id="isNewCompanyCustomer" resultType="Integer">
+    	select count(1) as cnt 
+    	from tbl_company_customer 
+    	WHERE 
+    		fk_company = #{fk_company}
+		AND fd_customer_mobile = #{fd_customer_mobile}
+    </select>
+    
+    <insert id="newCompanyCustomer">
+    	INSERT INTO tbl_company_customer (
+	    	fk_company
+			, fd_customer_name
+			, fd_customer_mobile
+			, fd_customer_email
+			, fk_writer
+			, fd_regdate
+		)
+		SELECT
+			#{fk_company}
+			, #{fd_customer_name}
+			, #{fd_customer_mobile}
+			, #{fd_customer_email}
+			, #{fk_writer}
+			, now()
+		FROM DUAL
+		WHERE NOT EXISTS (
+			SELECT fk_company FROM tbl_company_customer
+			WHERE 
+				fk_company = #{fk_company}
+			AND fd_customer_mobile = #{fd_customer_mobile}
+		)
+    </insert>
+    
+   	<select id="getNewCompanyCustomer" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT pk_company_customer, fd_customer_name, fd_customer_mobile, fd_customer_email FROM tbl_company_customer 
+		WHERE fd_customer_mobile = #{mobile_list}
+		and fk_company = #{fk_company}
+<!-- 		<foreach collection="mobile_list" item="item" open="(" close=")" separator=","> -->
+<!-- 		    #{item} -->
+<!-- 		</foreach> -->
+   	</select>
+   	
+   	<select id="getNewCompanyCustomerList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT pk_company_customer, fd_customer_name, fd_customer_mobile, fd_customer_email FROM tbl_company_customer 
+		WHERE 
+		fk_company = #{fk_company} 
+		AND fd_customer_mobile IN 
+		<foreach collection="mobile_list" item="item" open="(" close=")" separator=",">
+		    #{item}
+		</foreach>
+   	</select>
+   	
+   	<insert id="saveSend">
+    	INSERT INTO tbl_bulk_send_plan (
+    		pk_bulk_send_plan
+	    	, fk_company
+	    	, number_from
+			, reserve_yn
+			, reserve_dt
+			, channel_type
+			, agree_ad_yn
+<!-- 			, fd_ad_name -->
+			, msg_title
+			, msg_body
+			, path_attach
+			, cnt_user
+			, fk_staff
+			, chk_level
+			, memo
+			, fk_writer
+			, fd_regdate
+			, fk_staff_ai
+			, full_dnis
+			, dnis
+		)
+		VALUE(
+			#{pk_bulk_send_plan}
+			,#{fk_company}
+			, #{number_from}
+			, #{reserve_yn}
+			, #{reserve_dt}
+			, #{channel_type}
+			, #{agree_ad_yn}
+<!-- 			, #{fd_ad_name} -->
+			, #{msg_title}
+			, #{msg_body}
+			, #{path_attach}
+			, #{cnt_user}
+			, #{fk_staff}
+			, #{chk_level}
+			, #{memo}
+			, #{fk_writer}
+			, now()
+			, #{aiStaffSeq}
+			, #{fullDnis}
+			, #{fdDnis}
+		)
+		<selectKey keyProperty="pk_bulk_send_plan" resultType="long" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+    </insert>
+    
+    <insert id="saveSendCustomer">
+    	INSERT INTO tbl_bulk_send_member (
+	    	fk_bulk_send_plan
+	    	, number_to
+	    	, fk_customer
+			, channel_type
+			, fk_writer
+			, fd_regdate
+		)
+		VALUE(
+			#{fk_bulk_send_plan}
+			, #{number_to}
+			, #{fk_customer}
+			, #{channel_type}
+			, #{fk_writer}
+			, now()
+		)
+    </insert>
+    
+    <select id="getSendHistory" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT a.*, b.fd_staff_name
+		from tbl_bulk_send_plan a
+		inner join tbl_company_staff b
+		on a.fk_company = #{fk_company}
+		and a.fk_company = b.fk_company
+		and a.fk_writer = b.pk_company_staff
+		<!-- where fk_company = #{fk_company} -->
+		where 1 = 1
+		<if test="sender !='' and sender != null">
+			and b.fd_staff_name like CONCAT('%', #{sender}, '%')
+		</if>
+		<if test="channel !='' and channel != null and channel == '문자'">
+			and (
+				a.channel_type IN ('B1006' , 'B1007' , 'B1008') 
+			) 
+		</if>
+		<if test="channel !='' and channel != null and channel == '안내전화'">
+			and (
+				a.channel_type = 'B1011' 
+			) 
+		</if>
+		<if test="channelType !='' and channelType != null">
+			and a.channel_type = #{channelType}
+		</if>
+		<if test="startDate !='' and startDate != null and endDate != '' and endDate != null">
+			and DATE(a.reserve_dt) BETWEEN #{startDate} and #{endDate}
+		</if>
+		order by fd_regdate desc
+		LIMIT #{offset}, #{pageSize}
+	</select>
+	
+	<select id="getSendHistoryCnt" resultType="Integer">
+		select count(*) as totalCnt
+		from tbl_bulk_send_plan a
+		inner join tbl_company_staff b
+		on a.fk_company = #{fk_company}
+		and a.fk_company = b.fk_company
+		and a.fk_writer = b.pk_company_staff
+		<!-- where fk_company = #{fk_company} -->
+		where 1 = 1
+		<if test="sender !='' and sender != null">
+			and b.fd_staff_name like CONCAT('%', #{sender}, '%')
+		</if>
+		<if test="channel !='' and channel != null and channel == '문자'">
+			and (
+				a.channel_type IN ('B1006' , 'B1007' , 'B1008') 
+			) 
+		</if>
+		<if test="channel !='' and channel != null and channel == '안내전화'">
+			and (
+				a.channel_type = 'B1011' 
+			) 
+		</if>
+		<if test="channelType !='' and channelType != null">
+			and a.channel_type = #{channelType}
+		</if>
+		<if test="startDate !='' and startDate != null and endDate != '' and endDate != null">
+			and DATE(a.reserve_dt) BETWEEN #{startDate} and #{endDate}
+		</if>
+	</select>
+	
+	
+    <select id="getSendUserHistory" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT a.number_to, b.fd_customer_name FROM tbl_bulk_send_member a 
+		inner join tbl_company_customer b
+		on a.fk_customer = b.pk_company_customer
+		where a.fk_bulk_send_plan = #{fk_bulk_send_plan}
+        <if test="search !='' and search != null">
+            and 
+            (
+            	b.fd_customer_name like CONCAT('%', #{search}, '%')
+            	or a.number_to like CONCAT('%', #{search}, '%')
+            )
+        </if>
+        LIMIT #{offset}, #{pageSize}
+	</select>
+	
+	<select id="getSendUserHistoryCnt" resultType="Integer">
+		select count(*) as totalCnt
+		from tbl_bulk_send_member a 
+		inner join tbl_company_customer b
+		on a.fk_customer = b.pk_company_customer
+		where a.fk_bulk_send_plan = #{fk_bulk_send_plan}
+		<if test="search !='' and search != null">
+            and
+            (
+            	b.fd_customer_name like CONCAT('%', #{search}, '%')
+            	or a.number_to like CONCAT('%', #{search}, '%')
+            )
+        </if>
+	</select>
+	
+    <select id="getSendList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT pk_send_info, fd_send_message_name, fd_customer_count
+		from tbl_send_info
+		where fk_company = #{fk_company}
+	</select>
+	
+	<select id="getSendListCustomer" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT 
+		b.fd_customer_name,
+		b.fd_customer_mobile,
+		b.fd_customer_phone,
+		b.fd_customer_email,
+		b.pk_company_customer
+		from tbl_send_message a
+		inner join tbl_company_customer b
+		on a.fk_company = #{fk_company}
+		and a.fk_send_info = #{pk_send_info}
+		and a.fk_company_customer = b.pk_company_customer
+	</select>
+	
+	<select id="getDetailInfo" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select *
+		from  tbl_bulk_send_plan
+		where pk_bulk_send_plan = #{pkSend}
+	</select>
+	
+	<select id="getDetailCustomer" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT 
+			a.pk_company_customer, a.fd_customer_name, a.fd_customer_mobile, a.fd_customer_phone, a.fd_customer_email
+		from tbl_company_customer a
+		inner join tbl_bulk_send_member b
+		on b.fk_bulk_send_plan = #{pkSend}
+		and b.fk_customer = a.pk_company_customer
+	</select>
+    
+    <select id="getCompanyCustomer" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT 
+		pk_company_customer,
+		fd_customer_name,
+		fd_customer_mobile,
+		fd_customer_email
+		from tbl_company_customer
+		where fk_company = #{fk_company}
+        <if test="search !='' and search != null">
+            and 
+            (
+            	fd_customer_name like CONCAT('%', #{search}, '%') or
+            	fd_customer_mobile like CONCAT('%', #{search}, '%') or
+            	fd_customer_email like CONCAT('%', #{search}, '%')
+            )
+        </if>
+<!-- 		LIMIT 5 -->
+<!--         <if test="page !='' and page != null"> -->
+<!--             OFFSET ${(page -1) * 5} -->
+<!--         </if> -->
+	</select>
+	
+	<select id="companyCustomerCnt" resultType="Integer">
+		select count(*) as totalCnt
+		from tbl_company_customer a 
+		where a.fk_company = #{fk_company}
+		<if test="search !='' and search != null">
+            and fd_customer_name like CONCAT('%', #{search}, '%')
+        </if>
+	</select>
+	<select id="defaultYnUse" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select biz_phone_num 
+		from tbl_company_biz_phone a 
+		where a.fk_company = #{fk_company}
+		and default_yn ='Y'   	  
+		and reg_status = 'COMPLETE'
+    </select>
+    
+    <select id="selectDnis" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		select a.* 
+		from tbl_company_dnis a 
+		where a.fk_company = #{fk_company}
+		and a.fd_use_yn ='Y'
+		limit 1  
+    </select>
+    
+</mapper>

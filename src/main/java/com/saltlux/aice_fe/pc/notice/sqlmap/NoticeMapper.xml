@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.notice.dao.NoticeDao">
+
+    <select id="findNoticeCategory" resultType="NoticeVo">
+        select pk_notice_category, fd_category_name
+        from tbl_notice_category
+    </select>
+
+    <insert id="registerNoticeFile" parameterType="map">
+        insert into tbl_notice_file
+        (
+        fk_notice,
+        fk_writer,
+        fd_regdate,
+        fk_modifier,
+        fd_moddate,
+        fd_file_name,
+        fd_mime_code,
+        fd_file_size,
+        fd_file_path,
+        fd_file_type
+        )
+        values
+        <foreach collection="noticeFileVoList" item="item" separator=",">
+            (
+            #{item.fk_notice},
+            #{staffId},
+            now(),
+            #{staffId},
+            now(),
+            #{item.fd_file_name},
+            #{item.fd_mime_code},
+            #{item.fd_file_size},
+            #{item.fd_file_path},
+            #{item.fd_file_type}
+            )
+        </foreach>
+
+
+    </insert>
+
+    <insert id="save" parameterType="NoticeVo" useGeneratedKeys="true" keyProperty="pk_notice">
+        insert into tbl_notice
+        (fk_notice_category,
+         fd_title,
+         fd_content,
+         fd_release_start_date,
+         fd_release_end_date,
+         fd_hashtag1,
+         fd_hashtag2,
+         fd_hashtag3,
+         fd_show_main_yn,
+         fd_show_yn,
+         fk_writer,
+         fd_regdate,
+         fk_modifier,
+         fd_moddate,
+         fd_thumbnail)
+        values (#{fk_notice_category},
+                #{fd_title},
+                #{fd_content},
+                #{fd_release_start_date},
+                #{fd_release_end_date},
+                #{fd_hashtag1},
+                #{fd_hashtag2},
+                #{fd_hashtag3},
+                #{fd_show_main_yn},
+                #{fd_show_yn},
+                #{loginCompanyStaffPk},
+                now(),
+                #{loginCompanyStaffPk},
+                now(),
+                #{fd_thumbnail})
+    </insert>
+
+    <select id="getNotice" parameterType="list" resultType="NoticeVo">
+        SELECT *
+        FROM tbl_notice
+        WHERE
+        fd_show_yn='Y'
+        <if test="query !=''">
+            and(fd_content LIKE CONCAT('%',#{query} ,'%') or fd_title LIKE CONCAT('%',#{query} ,'%')
+            or fd_hashtag1 LIKE CONCAT('%',#{query} ,'%') or fd_hashtag2 LIKE CONCAT('%',#{query} ,'%')
+            or fd_hashtag3 LIKE CONCAT('%',#{query} ,'%'))
+        </if>
+
+
+        <![CDATA[
+          and fd_release_start_date <= #{start}
+          and fd_release_end_date >= #{start}
+            ]]>
+        ORDER BY pk_notice DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="getNoticeFiles" resultType="NoticeFileVo">
+        SELECT *
+        FROM tbl_notice_file
+        WHERE fk_notice
+        in
+        <foreach collection="noticeIdList" item="item" index="index" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </select>
+
+    <select id="getDetailNoticeFiles" resultType="NoticeFileVo">
+        SELECT *
+        FROM tbl_notice_file
+        WHERE fk_notice = #{pk_notice}
+    </select>
+
+    <select id="deleteNoticeFiles" >
+        DELETE
+        FROM tbl_notice_file
+        WHERE fk_notice = #{pk_notice}
+    </select>
+    <select id="getBeforeFrontId" resultType="Long">
+        SELECT pk_notice
+        FROM tbl_notice
+        WHERE pk_notice IN (
+                <![CDATA[
+            (SELECT pk_notice
+             FROM tbl_notice
+             WHERE pk_notice
+                 < #{pk_notice}
+               and fd_show_yn = 'Y'
+               and fd_release_start_date <= NOW()
+               and fd_release_end_date >= NOW()
+             ORDER BY pk_notice DESC
+            LIMIT 1)
+            , (
+        SELECT pk_notice
+        FROM tbl_notice
+        WHERE pk_notice
+            > #{pk_notice}
+          and fd_show_yn = 'Y'
+          and fd_release_start_date <= NOW()
+          and fd_release_end_date >= NOW()
+        ORDER BY pk_notice ASC LIMIT 1)
+              ]]>
+        )
+    </select>
+
+    <select id="getDetailNotice" resultType="NoticeDetailVo">
+        SELECT *
+        FROM tbl_notice
+        Where pk_notice = #{pk_notice}
+    </select>
+
+
+    <select id="getNoticeCnt" resultType="Integer">
+        SELECT COUNT(pk_notice)
+        FROM tbl_notice
+        WHERE
+        fd_show_yn='Y'
+        <if test="query !=''">
+            and(fd_content LIKE CONCAT('%',#{query} ,'%') or fd_title LIKE CONCAT('%',#{query} ,'%')
+            or fd_hashtag1 LIKE CONCAT('%',#{query} ,'%') or fd_hashtag2 LIKE CONCAT('%',#{query} ,'%')
+            or fd_hashtag3 LIKE CONCAT('%',#{query} ,'%'))
+        </if>
+
+        <![CDATA[
+          and fd_release_start_date <= #{start}
+          and fd_release_end_date >= #{start}
+            ]]>
+    </select>
+
+
+    <select id="getNoticeFileById" resultType="NoticeFileVo">
+        select *
+        from tbl_notice_file
+        where pk_notice_file = #{pk_notice_file_id}
+    </select>
+
+    <select id="getNoticeAdmin" resultType="NoticeVo">
+        SELECT B.pk_notice, C.pk_notice_category, C.fd_category_name, B.fd_title, D.user_name, B.fd_regdate,
+        B.fd_moddate,B.fd_thumbnail
+        FROM tbl_notice B
+        left join
+        tbl_notice_category C ON (C.pk_notice_category = B.fk_notice_category)
+        left join
+        tbl_admin_user D ON (D.pk_admin_user = B.fk_writer)
+        where 1=1
+        <if test="query!=''">
+            <choose>
+                <when test="type==''">
+                    and(B.fd_content LIKE CONCAT('%',#{query} ,'%') or B.fd_title LIKE CONCAT('%',#{query} ,'%'))
+                </when>
+                <when test="type=='제목'">
+                    and B.fd_title LIKE CONCAT('%',#{query},'%')
+                </when>
+                <when test="type=='내용'">
+                    and B.fd_content LIKE CONCAT('%',#{query},'%')
+                </when>
+            </choose>
+        </if>
+        ORDER BY B.pk_notice DESC
+        LIMIT #{offset}, #{pageSize}
+
+    </select>
+
+    <select id="getNoticeAdminCnt" resultType="Integer">
+        SELECT COUNT(B.pk_notice)
+        FROM tbl_notice B
+        left join
+        tbl_notice_category C ON (C.pk_notice_category = B.fk_notice_category)
+        left join
+        tbl_admin_user D ON (D.pk_admin_user = B.fk_writer)
+        where 1=1
+        <if test="query!=''">
+            <choose>
+                <when test="type==''">
+                    and(B.fd_content LIKE CONCAT('%',#{query} ,'%') or B.fd_title LIKE CONCAT('%',#{query} ,'%'))
+                </when>
+                <when test="type=='제목'">
+                    and B.fd_title LIKE CONCAT('%',#{query},'%')
+                </when>
+                <when test="type=='내용'">
+                    and B.fd_content LIKE CONCAT('%',#{query},'%')
+                </when>
+            </choose>
+        </if>
+
+
+    </select>
+
+
+    <select id="getDetailNoticeAdmin" resultType="NoticeVo">
+        select B.pk_notice,
+               A.pk_notice_category as fk_notice_category,
+               A.fd_category_name,
+               B.fd_title,
+               B.fd_hashtag1,
+               B.fd_hashtag2,
+               B.fd_hashtag3,
+               B.fd_show_main_yn,
+               B.fd_views,
+               B.fd_content,
+               B.fd_show_yn,
+               B.fd_release_start_date,
+               B.fd_release_end_date,
+               B.fd_regdate,
+               B.fd_moddate,
+               B.fd_regdate,
+               B.fd_moddate,
+               B.fd_views,
+               B.fd_thumbnail,
+               B.fk_writer,
+               B.fk_modifier,
+               (select user_name from tbl_admin_user where pk_admin_user = B.fk_writer limit 1) as fd_writer_name,
+               (select user_name from tbl_admin_user where pk_admin_user = B.fk_modifier limit 1) as fd_modifier_name
+        from tbl_notice B
+            left join
+            tbl_notice_category A ON (A.pk_notice_category = B.fk_notice_category)
+        where pk_notice =#{pk_notice}
+    </select>
+
+    <delete id="deleteNotice">
+        DELETE from tbl_notice
+        where pk_notice in
+        <foreach collection="questionIdList" item="item" index="index" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+    <update id="updateNotice">
+        update tbl_notice
+        set fk_notice_category=#{fk_notice_category},
+            fd_title = #{fd_title},
+            fd_hashtag1 = #{fd_hashtag1},
+            fd_hashtag2 = #{fd_hashtag2},
+            fd_hashtag3 = #{fd_hashtag3},
+            fd_show_main_yn = #{fd_show_main_yn},
+            fd_content = #{fd_content},
+            fd_show_yn = #{fd_show_yn},
+            fd_release_start_date = #{fd_release_start_date},
+            fd_release_end_date = #{fd_release_end_date},
+            fk_modifier = #{fk_modifier},
+            fd_thumbnail = #{fd_thumbnail},
+            fd_moddate = now()
+        where pk_notice = #{pk_notice}
+    </update>
+    <update id="updateViews">
+        update tbl_notice
+        set fd_views = fd_views+1 where pk_notice = #{pk_notice}
+    </update>
+
+</mapper>
+

@@ -1,0 +1,623 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.staff.dao.StaffDao">
+
+    <select id="selectCompanyDeptList" resultType="CompanyDeptVo">
+        SELECT
+               A.pk_company_dept
+             , A.fk_company
+             , A.fd_dept_name
+             , A.fd_dept_role
+             , A.fd_use_yn
+             , A.fd_default_yn
+             , C.fd_staff_name AS master_staff_name
+             , A.fd_dept_ai_yn
+        FROM
+            tbl_company_dept A
+        LEFT JOIN tbl_company_dept_staff B
+               ON A.pk_company_dept = B.fk_company_dept AND B.fd_dept_master_yn = 'Y'
+        LEFT JOIN tbl_company_staff C
+               ON B.fk_company_staff = C.pk_company_staff AND C.fk_company = A.fk_company
+        WHERE
+		   A.fk_company = #{fk_company}
+        <if test="pk_company_staff != null and pk_company_staff != 0">
+            AND C.pk_company_staff = #{pk_company_staff}
+        </if>
+        GROUP BY pk_company_dept
+		ORDER BY A.fd_default_yn DESC, A.pk_company_dept ASC
+    </select>
+
+    <select id="staffDefaultAiCnt" resultType="java.lang.Integer">
+		select count(1) cnt
+		from tbl_company_staff
+		where fk_company = #{fk_company}
+		and fk_staff_work_code = #{fk_staff_work_code}
+	</select>
+
+
+    <select id="checkDeptName" resultType="CompanyDeptVo">
+        SELECT *
+          FROM tbl_company_dept
+         WHERE fk_company   = #{fk_company}
+           AND fd_dept_name = #{fd_dept_name}
+    </select>
+
+    <insert id="insertCompanyDept" useGeneratedKeys="true" keyProperty="pk_company_dept">
+        INSERT INTO tbl_company_dept
+        (fk_company, fd_dept_name, fd_dept_role, fk_writer
+        <if test="fd_dept_code != '' ">
+            , fd_dept_code
+        </if>
+        )
+        VALUES
+        (#{fk_company}, #{fd_dept_name}, #{fd_dept_role}, #{fk_writer}
+        <if test="fd_dept_code != '' ">
+            , #{fd_dept_code}
+        </if>
+        )
+        <selectKey keyProperty="pk_company_dept" resultType="long" order="AFTER">
+            SELECT LAST_INSERT_ID();
+        </selectKey>
+    </insert>
+
+    <insert id="insertCompanyDeptTag" useGeneratedKeys="true" keyProperty="fk_company_dept">
+        <selectKey keyColumn="fk_company_dept" resultType="long" order="AFTER">
+            SELECT LAST_INSERT_ID();
+        </selectKey>
+        INSERT INTO tbl_company_dept_tag
+        (fk_company, fd_dept_tag, fk_company_dept, fk_writer)
+        VALUES
+        (
+              #{fk_company}
+            , #{fd_dept_tag}
+            , #{fk_company_dept}
+            , #{fk_writer}
+        )
+    </insert>
+
+    <update id="updateCompanyDept">
+        UPDATE
+        tbl_company_dept
+        SET
+        fd_dept_name  = #{fd_dept_name}
+        , fd_dept_role = #{fd_dept_role}
+        , fd_use_yn = #{fd_use_yn}
+        , fk_modifier = #{fk_modifier}
+        , fd_moddate = now()
+        <if test="fd_dept_code != '' ">
+            , fd_dept_code = #{fd_dept_code}
+        </if>
+        WHERE
+        pk_company_dept = #{pk_company_dept}
+    </update>
+
+    <delete id="deleteCompanyDept">
+        DELETE FROM tbl_company_dept
+         WHERE
+            pk_company_dept = #{pk_company_dept}
+    </delete>
+
+    <select id="staffCountDept" resultType="java.lang.Integer">
+		SELECT COUNT(fk_company_staff) AS cnt
+		FROM tbl_company_dept_staff
+		WHERE fk_company_dept = #{fk_company_dept}
+	</select>
+	
+	<select id="getStaffAllListCnt" resultType="java.lang.Integer">
+		with WITH_STAFF_LIST AS
+		( SELECT A.pk_company_staff,
+		        A.fk_company ,
+		        A.fd_staff_id ,
+		        A.dept_disp_name ,
+		        A.fd_staff_pw ,
+		        A.fd_signup_keycode ,
+		        A.fd_signup_keycode_ok_yn ,
+		        A.fd_staff_ai_yn ,
+		        A.fd_staff_ai_uid ,
+		        A.fd_dnis ,
+		        A.fd_staff_level_code ,
+		        ( SELECT fd_name
+		        FROM    tbl_code
+		        WHERE   A.fd_staff_level_code = pk_code
+		        )
+		        AS fd_staff_level ,
+		        A.fd_staff_status_code ,
+		        ( SELECT fd_name
+		        FROM    tbl_code
+		        WHERE   A.fd_staff_status_code = pk_code
+		        )
+		        AS fd_staff_status ,
+		        A.fd_staff_phone ,
+		        A.fd_staff_email ,
+		        A.fd_staff_duty ,
+		        A.fd_staff_response_status_code ,
+		        ( SELECT fd_name
+		        FROM    tbl_code
+		        WHERE   A.fd_staff_response_status_code = pk_code
+		        )
+		        AS fd_staff_response_status ,
+		        A.fd_push_noti_yn ,
+		        A.fd_push_token ,
+		        A.fd_login_date ,
+		        A.fk_writer ,
+		        A.fd_regdate ,
+		        A.fk_modifier ,
+		        A.fd_moddate ,
+		        A.fd_company_master_yn ,
+		        A.fd_staff_name ,
+		        A.fd_staff_mobile
+		FROM    tbl_company_staff A
+		WHERE   A.fd_staff_level_code != 'A1004'
+		)
+		SELECT   count(*) as count
+		FROM     WITH_STAFF_LIST AA
+		WHERE      AA.fd_staff_ai_yn        = 'N'
+		AND      AA.fd_staff_status_code != 'A1103'
+		AND      AA.fk_company            = #{fk_company}
+		<if test = "search.searchString !='부서 전체' and search.searchString != null">
+			AND	AA.dept_disp_name = "${search.searchString}"
+		</if>
+		<if test = "search.orderType !='' and search.orderType != null">
+			AND	AA.fd_staff_name LIKE CONCAT('%',UPPER(#{search.orderType}), '%')
+		</if>
+	</select>
+
+    <select id="selectStaffDeptList" resultType="CompanyDeptVo">
+        SELECT  A.pk_company_dept
+              , A.fk_company
+              , A.fd_dept_name
+              , A.fd_dept_role
+              , A.fd_use_yn
+              , A.fd_default_yn
+              , A.fd_dept_ai_yn
+        FROM tbl_company_dept A
+	   WHERE A.fk_company = #{fk_company}
+	     AND A.fd_dept_ai_yn = 'N'
+    ORDER BY A.fd_default_yn DESC, A.pk_company_dept ASC
+    </select>
+    
+    
+    <select id="getStaffListPaging" resultType="CompanyStaffVo">
+		<include refid="selectStaff"></include>
+        SELECT AA.*
+        FROM WITH_STAFF_LIST AA
+        <include refid="searchStaff"/>
+        <if test = "search.searchString !='부서 전체' and search.searchString != null">
+        	AND	AA.dept_disp_name = "${search.searchString}"
+        </if>
+        GROUP BY AA.pk_company_staff
+        -- ORDER BY A.fd_regdate DESC
+        <if test = "search.searchString != null">
+			<if test="search.pageSize !='' and search.pageSize != null and search.pageSize !=0">
+	            LIMIT ${search.pageSize}
+	             <if test="search.page !='' and search.page != null">
+	                 OFFSET ${(search.page -1) * search.pageSize}
+	            </if>
+			</if>         
+        </if>
+    </select>
+    
+    <!-- 부서 목록 가져오기 -->
+    <select id="getDeptDispName" resultType="map">
+    		select 
+    			DISTINCT dept_disp_name 
+    			from tbl_company_staff where fk_company =#{fk_company} 
+    		and fd_staff_ai_yn = 'N' and fd_staff_status_code !='A1103'and dept_disp_name is not null;
+   	</select>
+    
+    <select id="getStaffAllCnt" resultType="int">
+		<include refid="selectStaff"></include>
+		SELECT count(*)
+		FROM WITH_STAFF_LIST AA
+        <include refid="searchStaff"/>
+    </select>
+
+    <sql id="searchStaff">
+<!-- 		LEFT JOIN tbl_company_staff D -->
+<!-- 		ON AA.fk_writer = D.pk_company_staff -->
+<!-- 		LEFT JOIN ( SELECT B.fk_company_staff -->
+<!-- 		, C.fd_dept_name AS fd_dept_name -->
+<!-- 		, B.fd_dept_master_yn -->
+<!-- 		FROM tbl_company_dept_staff B -->
+<!-- 		INNER JOIN tbl_company_dept C -->
+<!-- 		ON B.fk_company_dept = C.pk_company_dept -->
+<!-- 		WHERE C.fk_company = #{fk_company} -->
+<!-- 		) X -->
+<!-- 		ON AA.pk_company_staff = X.fk_company_staff -->
+		WHERE 1 = 1
+		AND AA.fd_staff_ai_yn = 'N'
+		AND AA.fd_staff_status_code != 'A1103'
+		AND AA.fk_company = #{fk_company}
+        <if test="pk_company_staff != null and pk_company_staff != ''">
+            AND UPPER (AA.pk_company_staff) LIKE CONCAT('%', UPPER(#{pk_company_staff}), '%')
+        </if>
+        <if test="fd_staff_name != null and fd_staff_name != ''">
+            AND UPPER (AA.fd_staff_name) LIKE CONCAT('%', UPPER(#{fd_staff_name}), '%')
+        </if>
+        <if test="fd_staff_email != null and fd_staff_email != ''">
+            AND UPPER (AA.fd_staff_email) LIKE CONCAT('%', UPPER(#{fd_staff_email}), '%')
+        </if>
+        <if test="fd_staff_phone != null and fd_staff_phone != ''">
+            AND UPPER (AA.fd_staff_phone) LIKE CONCAT('%', UPPER(#{fd_staff_phone}), '%')
+        </if>
+        <if test="fd_staff_mobile != null and fd_staff_mobile != ''">
+            AND UPPER (AA.fd_staff_mobile) LIKE CONCAT('%', UPPER(#{fd_staff_mobile}), '%')
+        </if>
+        <if test="search.searchColumn != null and !''.equals(search.searchColumn) and search.searchString == null and ''.equals(search.searchString)">
+            AND UPPER (X.fd_dept_name) LIKE CONCAT('%', UPPER(#{search.searchColumn}), '%')
+        </if>
+        <if test="search.searchColumn != null and !''.equals(search.searchColumn) and search.searchString != null and !''.equals(search.searchString)">
+            AND ${search.searchColumn} = #{search.searchString}
+        </if>
+    </sql>
+
+    <select id="getStaffList" resultType="CompanyStaffVo">
+		<include refid="selectStaff"></include>
+        SELECT AA.*
+<!-- 		, CASE WHEN AA.fd_company_master_yn ='Y' AND X.fd_dept_master_yn = 'Y' -->
+<!-- 		THEN CONCAT('👑🏅 ', AA.fd_staff_name) -->
+<!-- 		WHEN AA.fd_company_master_yn ='Y' -->
+<!-- 		THEN CONCAT('👑 ', AA.fd_staff_name) -->
+<!-- 		WHEN X.fd_dept_master_yn = 'Y' -->
+<!-- 		THEN CONCAT('🏅 ', AA.fd_staff_name) -->
+<!-- 		ELSE AA.fd_staff_name -->
+<!--         END AS fd_staff_name_icon, AA.fd_staff_mobile -->
+<!-- 		, X.fd_dept_name AS fd_dept_name -->
+<!-- 		, D.fd_staff_name AS fd_writer_name -->
+        FROM WITH_STAFF_LIST AA
+        <include refid="searchStaff"/>
+        GROUP BY AA.pk_company_staff
+        -- ORDER BY A.fd_regdate DESC
+        <if test="search.orderBy != null  and search.orderType != null and search.orderBy != '' and search.orderType != '' ">
+            ORDER BY ${search.orderBy} ${search.orderType}
+        </if>
+        <if test="search.orderBy == '' and search.orderType == ''">
+            ORDER BY pk_company_staff DESC
+        </if>
+<!--         <if test="search.pageSize !='' and search.pageSize != null and search.pageSize !=0"> -->
+<!--             LIMIT ${search.pageSize} -->
+<!--             <if test="search.page !='' and search.page != null"> -->
+<!--                 OFFSET ${(search.page -1) * search.pageSize} -->
+<!--             </if> -->
+<!--         </if> -->
+    </select>
+
+    <sql id="selectStaff">
+		with WITH_STAFF_LIST AS (
+                      SELECT A.pk_company_staff, A.fk_company
+	           , A.fd_staff_id
+	           , A.dept_disp_name
+	           , A.fd_staff_pw
+	           , A.fd_signup_keycode
+	           , A.fd_signup_keycode_ok_yn
+	           , A.fd_staff_ai_yn
+	           , A.fd_staff_ai_uid
+	           , A.fd_dnis
+	           , A.fd_staff_level_code
+	           , ( SELECT fd_name
+	                 FROM tbl_code
+				    WHERE A.fd_staff_level_code = pk_code ) AS fd_staff_level
+	           , A.fd_staff_status_code
+	           , ( SELECT fd_name
+	                FROM tbl_code
+				   WHERE A.fd_staff_status_code = pk_code ) AS fd_staff_status
+	           , A.fd_staff_phone
+	           , A.fd_staff_email
+	           , A.fd_staff_duty
+	           , A.fd_staff_response_status_code
+	           , ( SELECT fd_name
+	                FROM tbl_code
+				   WHERE A.fd_staff_response_status_code = pk_code ) AS fd_staff_response_status
+	           , A.fd_push_noti_yn
+	           , A.fd_push_token
+	           , A.fd_login_date
+	           , A.fk_writer
+	           , A.fd_regdate
+	           , A.fk_modifier
+	           , A.fd_moddate
+               , A.fd_company_master_yn
+               , A.fd_staff_name
+               , A.fd_staff_mobile
+           FROM tbl_company_staff A
+           WHERE A.fd_staff_level_code != 'A1004' 
+    	)
+	</sql>
+
+    <select id="getStaff" resultType="CompanyStaffVo">
+         SELECT  A.pk_company_staff
+	           , A.fk_company
+	           , A.fd_staff_id
+	           , A.fd_staff_pw
+	           , A.fd_signup_keycode
+	           , A.fd_signup_keycode_ok_yn
+	           , A.fd_signup_keycode_date
+	           , A.fd_staff_ai_yn
+	           , A.fd_staff_ai_uid
+	           , A.fd_dnis
+	           , A.fd_staff_level_code
+	           , A.fd_staff_status_code
+	           , A.fd_staff_name
+	           , A.fd_staff_mobile
+	           , A.fd_staff_phone
+	           , A.fd_staff_email
+	           , A.fd_staff_duty
+	           , A.fd_staff_di
+	           , A.fd_company_master_yn
+			   , ( SELECT BB.pk_company_dept
+                     FROM tbl_company_dept_staff AA
+                          INNER JOIN tbl_company_dept BB
+                                  ON (BB.pk_company_dept = AA.fk_company_dept)
+                    WHERE fk_company_staff = A.pk_company_staff
+                    ORDER BY AA.fk_company_dept ASC
+                    LIMIT 1 ) AS pk_company_dept
+			   , ( SELECT BB.fd_dept_name
+                     FROM tbl_company_dept_staff AA
+                          INNER JOIN tbl_company_dept BB
+                                  ON (BB.pk_company_dept = AA.fk_company_dept)
+                    WHERE fk_company_staff = A.pk_company_staff
+                    ORDER BY AA.fk_company_dept ASC
+                    LIMIT 1 ) AS fd_dept_name
+			    , ( SELECT AA.fd_dept_master_yn
+                     FROM tbl_company_dept_staff AA
+                          INNER JOIN tbl_company_dept BB
+                                  ON (BB.pk_company_dept = AA.fk_company_dept)
+                    WHERE fk_company_staff = A.pk_company_staff
+                    ORDER BY AA.fk_company_dept ASC
+                    LIMIT 1 ) AS fd_dept_master_yn
+	           , A.fd_staff_response_status_code
+	           , A.fd_push_noti_yn
+	           , A.fd_push_token
+	           , A.fd_login_date
+	           /* 등록자 이름, 부서 정보*/
+	           , A.fk_writer
+			   , ( SELECT C.fd_staff_name
+                   FROM tbl_company_staff C
+                  WHERE A.fk_writer = C.pk_company_staff ) AS fd_writer_name
+               , ( SELECT BB.fd_dept_name
+                    FROM tbl_company_dept_staff AA
+                          INNER JOIN tbl_company_dept BB
+                                  ON (BB.pk_company_dept = AA.fk_company_dept)
+                   WHERE fk_company_staff = A.fk_writer
+                   ORDER BY AA.fk_company_dept ASC
+                   LIMIT 1 ) AS fd_writer_dept_name
+	           , A.fd_regdate
+	           /* 수정자 이름, 부서 정보*/
+	           , A.fk_modifier
+			   , ( SELECT C.fd_staff_name
+                   FROM tbl_company_staff C
+                  WHERE A.fk_modifier = C.pk_company_staff ) AS fd_modifier_name
+               , ( SELECT BB.fd_dept_name
+                   FROM tbl_company_dept_staff AA
+                        INNER JOIN tbl_company_dept BB
+                                ON (BB.pk_company_dept = AA.fk_company_dept)
+                  WHERE fk_company_staff = A.fk_modifier
+                  ORDER BY AA.fk_company_dept ASC
+                  LIMIT 1 ) AS fd_modifier_dept_name
+	           , A.fd_moddate
+           FROM tbl_company_staff A
+	      WHERE A.pk_company_staff = #{pk_company_staff}
+    </select>
+
+
+    <insert id="insertCompanyStaff">
+        INSERT INTO tbl_company_staff
+        (
+        fk_company
+        , solution_type
+        , user_type
+        , is_change_password
+        , fd_company_master_yn
+        , fd_staff_name
+        , dept_disp_name
+        , fd_staff_duty
+        , fd_staff_level_code
+        , fd_staff_status_code
+        , fd_staff_phone
+        , fd_staff_mobile
+        , fd_staff_email
+        , fd_staff_response_status_code
+        , fd_staff_id
+        , fd_signup_keycode
+        , fd_signup_keycode_ok_yn
+        , fd_default_ai
+        , fk_writer
+        , fd_regdate
+        , fd_staff_pw
+        , fd_staff_persona
+        , fd_sign_up_path_code
+        )
+        VALUES
+        (
+        #{fk_company}
+        , #{solution_type}
+        , #{user_type}
+        , #{is_change_password}
+        , #{fd_company_master_yn}
+        , #{fd_staff_name}
+        , #{dept_disp_name}
+        , #{fd_staff_duty}
+        , #{fd_staff_level_code}
+        , #{fd_staff_status_code}
+        , #{fd_staff_phone}
+        , #{fd_staff_mobile}
+        , #{fd_staff_email}
+        , #{fd_staff_response_status_code}
+        , #{fd_staff_id}
+        , #{fd_signup_keycode}
+        , 'N'
+        , #{fd_default_ai}
+        , #{fk_writer}
+        , now()
+        ,#{fd_staff_pw}
+        , #{fd_staff_persona}
+        , #{fd_sign_up_path_code}
+        )
+        <selectKey keyProperty="pk_company_staff" resultType="long" order="AFTER">
+            SELECT LAST_INSERT_ID() LIMIT 1;
+        </selectKey>
+    </insert>
+
+    <update id="updateStaff">
+        UPDATE tbl_company_staff
+<!--        SET fd_company_master_yn = #{fd_company_master_yn}-->
+        SET fd_staff_name = #{fd_staff_name}
+        , fd_staff_duty = #{fd_staff_duty}
+        , dept_disp_name = #{dept_disp_name}
+<!--         , fd_staff_level_code = #{fd_staff_level_code} -->
+        , fd_staff_status_code = #{fd_staff_status_code}
+        , fd_staff_phone = #{fd_staff_phone}
+        , fd_staff_mobile = #{fd_staff_mobile}
+        , fd_staff_email = #{fd_staff_email}
+        , solution_type = #{solution_type}
+        , user_type = #{user_type}
+<!--         , fd_staff_response_status_code = #{fd_staff_response_status_code} -->
+        , fk_modifier = #{fk_modifier}
+        , fd_moddate = now()
+        <!-- , fd_staff_id                   = #{fd_staff_id} -->
+        <if test="fd_staff_pw  != null ">
+            , fd_staff_pw = #{fd_staff_pw}
+        </if>
+
+        WHERE pk_company_staff = #{pk_company_staff}
+    </update>
+
+    <update id="updateStaffAsCustomer">
+        UPDATE tbl_company_staff
+           SET fd_staff_name                 = #{fd_staff_name}
+             , fd_staff_email                = #{fd_staff_email}
+			 , fd_staff_phone                = #{fd_staff_phone}
+			 , fd_address_common             = #{fd_address_common}
+             , fd_address_detail             = #{fd_address_detail}
+             , fd_address_zipcode            = #{fd_address_zipcode}
+         WHERE pk_company_staff              = #{pk_company_staff}
+    </update>
+
+    <update id="updateDeptStaff">
+        UPDATE tbl_company_dept_staff
+           SET fk_company_dept       = #{fk_company_dept}
+             , fd_dept_master_yn     = #{fd_dept_master_yn}
+         WHERE fk_company_staff      = #{fk_company_staff}
+    </update>
+
+    <update id="deleteStaff">
+		UPDATE tbl_company_staff
+           SET fd_staff_status_code = 'A1103'
+         WHERE pk_company_staff = #{pk_company_staff}
+    </update>
+
+    <delete id="deleteDeptStaff">
+        DELETE
+          FROM tbl_company_dept_staff
+         WHERE fk_company_staff = #{fk_company_staff}
+    </delete>
+
+    <update id="deleteStaffList">
+        UPDATE tbl_company_staff
+        SET fd_staff_status_code = 'A1103'
+        WHERE pk_company_staff IN
+        <foreach collection="pk_list" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </update>
+
+    <delete id="deleteDeptStaffList">
+        DELETE
+        FROM tbl_company_dept_staff
+        WHERE fk_company_staff IN
+        <foreach collection="pk_list" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </delete>
+
+    <select id="checkStaffEmail" resultType="CompanyStaffVo">
+        SELECT *
+        FROM tbl_company_staff
+        WHERE fd_staff_Email = #{staffEmail}
+        <if test="pkCompanyStaff != null and pkCompanyStaff != 0">
+            AND pk_company_staff != #{pkCompanyStaff}
+        </if>
+        <if test="fkCompany != null and fkCompany != 0">
+            AND fk_company = #{fkCompany}
+        </if>
+        LIMIT 1
+    </select>
+
+    <select id="checkStaffAccountID" resultType="CompanyStaffVo">
+		SELECT *
+		FROM tbl_company_staff
+		WHERE fd_staff_id  = #{staffAccountID}
+		and fd_staff_status_code !='A1103'
+		LIMIT 1
+	</select>
+
+    <update id="updateCompanyLogo">
+		UPDATE
+		    tbl_company
+		SET
+		    fd_company_logo_file_path 	= #{fd_company_logo_file_path}
+		  , fd_company_logo_file_name 	= #{fd_company_logo_file_name}
+		  , fk_modifier 				= #{fk_modifier}
+		  , fd_moddate 					= now()
+		WHERE
+			pk_company = #{pk_company}
+	</update>
+
+    <update id="updateStaffResponseStatus">
+		UPDATE
+		    tbl_company_staff
+		SET
+		    fd_staff_response_status_code 	= #{fd_staff_response_status_code}
+		  , fk_modifier 					= #{fk_modifier}
+		  , fd_moddate 						= now()
+		WHERE
+		  	pk_company_staff = #{pk_company_staff}
+	</update>
+
+    <select id="checkCompanyMaster" resultType="CompanyStaffVo">
+		SELECT fd_company_master_yn
+		  FROM tbl_company_staff
+		 WHERE pk_company_staff = #{pk_company_staff}
+	</select>
+
+    <select id="companyMasterCnt" resultType="int">
+		SELECT COUNT(pk_company_staff)
+		  FROM tbl_company_staff
+		 WHERE fd_company_master_yn = 'Y'
+		   AND fk_company = #{fk_company}
+	</select>
+
+    <update id="updateCompanyMasterN">
+        UPDATE tbl_company_staff
+           SET fd_company_master_yn = 'N'
+         WHERE fk_company           = #{fk_company} and pk_company_staff != #{pk_company_staff}
+    </update>
+
+    <select id="getById" resultType="CompanyStaffVo">
+		SELECT * FROM tbl_company_staff WHERE pk_company_staff = #{pk_company_staff}
+	</select>
+	
+	
+	<select id="masterStaffUuid" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT uuid, solution_type 
+		FROM tbl_company_staff
+		WHERE fk_company = #{fkCompany}
+		AND fd_company_master_yn = 'Y'
+	</select>
+	
+	<select id="ploonianModify" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+		SELECT a.fk_ai_policy_avatar_img, 
+			   (SELECT fk_ai_policy_avatar_img FROM tbl_ai_conf_avatar_img
+				WHERE fk_company = #{fkCompany}
+				and fk_company_staff_ai = #{fkCompanyStaffAi}
+				and part_type = 'wear') as pk_ai_policy_avatar_img,	
+		       b.voice_id
+			FROM tbl_ai_conf_avatar_img as a
+		    INNER join tbl_ai_policy_avatar_img as b
+		    on a.fk_ai_policy_avatar_img = b.pk_ai_policy_avatar_img
+			WHERE a.fk_company = #{fkCompany}
+			and   a.fk_company_staff_ai = #{fkCompanyStaffAi}
+			and   a.part_type = 'face';
+	</select>		
+
+
+</mapper>

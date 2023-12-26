@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.campaginsendList.dao.CampaginSendListDao">
+
+	<select id="getSendList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+			  select a.fk_company,
+			  		 a.fd_send_message_name,
+			         a.fd_message_content,
+			         a.pk_send_info,
+			         a.fd_customer_count,
+			         a.fd_list_share,
+			         a.fk_writer,
+			         a.fd_regdate,
+			         b.fd_staff_name
+			        <if test="fkSendInfo !=null">
+			        , d.pk_company_customer
+			        , d.fd_customer_name
+			        , d.fd_company_dept
+			        , d.fd_customer_mobile
+			        , d.fd_customer_phone
+			        , d.fd_customer_email
+			        </if>
+			  from   tbl_send_info a
+			  inner join tbl_company_staff b
+ 			  on a.fk_writer = b.pk_company_staff
+ 			  <if test="fkSendInfo !=null">	
+ 			  inner join tbl_send_message c
+ 			  on a.pk_send_info = c.fk_send_info
+ 			  and c.fk_send_info = #{fkSendInfo}
+ 			  inner join tbl_company_customer d
+ 			  on c.fk_company_customer = d.pk_company_customer
+			  </if>
+			  where a.fk_company = #{fk_company}
+		<choose>
+			<when test="select == 'shared'">
+				and a.fd_list_share != 'B2001'
+			</when>
+			<when test="select == 'NotShared'">
+				and a.fd_list_share = 'B2001'
+			</when>
+		</choose>
+		<choose>
+			<!--발신리스트 컬럼 갯수 설정(tbl_send_info)  -->
+			<when test="fkSendInfo ==null">	
+				LIMIT 3
+			 	<if test="page !='' and page != null">
+		            OFFSET ${(page -1) * 2}
+		        </if>
+			</when>
+		</choose>
+	</select>
+	
+	<select id="sendListCheck" resultType="Integer">
+		select count(*) as totalCnt
+		from tbl_send_message a 
+		where a.fk_send_info = #{fkSendInfo}
+	</select>
+	
+	<select id="sendListCnt" resultType="Integer">
+		select count(*) as totalCnt
+		from tbl_send_info a 
+		where a.fk_company = #{fk_company}
+	</select>
+	
+	<insert id="infoRegistManagement">
+	    INSERT INTO tbl_send_message
+	    (
+		fk_company
+		, fk_send_info
+		, fk_company_customer
+		, fk_writer
+		, fd_regdate
+		, fd_moddate
+	    )
+	    VALUES
+	    (
+		#{fk_company}
+		, #{fk_send_info}
+		, #{fk_company_customer}
+		, #{fk_writer}
+		, now()
+		, now()
+	    )
+	 </insert>
+
+	 <insert id="infoRegistList">
+	    INSERT INTO tbl_send_info
+	    (
+		fk_company
+		, pk_send_info
+		, fd_send_message_name
+		, fd_message_content
+		, fd_customer_count
+		, fd_list_share
+		, fk_writer
+		, fd_regdate
+		, fd_moddate
+	    )
+	    VALUES
+	    (
+		#{fk_company}
+		, #{pk_send_info}
+		, #{fd_send_message_name}
+		, #{fd_message_content}
+		, #{fd_customer_count}
+		, #{fd_list_share}
+		, #{fk_writer}
+		, now()
+		, now()
+	    )
+	 </insert>
+	 
+	 <insert id="infoUpdateManagement">
+	    INSERT INTO tbl_send_message
+	    (
+		fk_company
+		, fk_send_info
+		, fk_company_customer
+		, fk_writer
+		, fd_regdate
+		, fd_moddate
+	    )
+	    VALUES
+	    (
+		#{fk_company}
+		, #{fk_send_info}
+		, #{fk_company_customer}
+		, #{fk_writer}
+		, now()
+		, now()
+	    )
+	 </insert>
+	 
+	 <update id="infoUpdateList">
+	    UPDATE tbl_send_info
+	    SET
+			fk_company = #{fk_company}
+			, fd_send_message_name = #{fd_send_message_name}
+			, fd_message_content = #{fd_message_content}
+			, fd_customer_count = #{fd_customer_count}
+			, fd_list_share = #{fd_list_share}
+			, fk_writer = #{fk_writer}
+			, fd_regdate = now()
+			, fd_moddate = now()
+	    where
+			pk_send_info = #{pk_send_info}
+	 </update>
+	 
+	 <delete id="infoDeleteManagement">
+	 	delete from tbl_send_message 
+	 	where fk_company = #{fk_company} and fk_send_info = #{fk_send_info} 
+	 </delete>
+	 
+	 <delete id="sendListDelete">
+	 	DELETE FROM a, b
+    	USING tbl_send_info AS a
+    	LEFT JOIN tbl_send_message AS b
+    	ON a.pk_send_info = b.fk_send_info
+		WHERE a.pk_send_info = #{pk_send_info};
+	 </delete>
+	 
+	 <select id="customerCnt" resultType="Integer">
+		select count(*) as totalCnt
+		from tbl_company_customer a 
+		where a.fd_customer_name = #{fd_customer_name}
+		and a.fd_customer_mobile = #{fd_phone}
+	</select>
+	
+	 <insert id="saveInfoUpdateManagement">
+        INSERT INTO tbl_company_customer(
+        fk_company, 
+        fd_customer_name, 
+        fd_active_state, 
+        fd_company_dept, 
+        fd_customer_mobile, 
+        fd_customer_phone, 
+        fd_customer_email, 
+        fk_writer,
+        fd_regdate, 
+        fk_modifier, 
+        fd_moddate
+        )
+        VALUES (
+        #{fk_company}, 
+        #{fd_customer_name}, 
+        'A2201', 
+        #{fd_department}, 
+        #{fd_cell_phone}, 
+        #{fd_phone}, 
+        #{fd_email_address}, 
+        #{fk_writer}, 
+        now(), 
+        #{fk_modifier},
+        #{fd_moddate}
+        )
+        <selectKey keyProperty="pk_company_customer" resultType="long" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+    </insert>
+    <select id="getCustomerList" resultType="com.saltlux.aice_fe._baseline.baseVo.DataMap">
+        select * from tbl_company_customer where 1 = 1 
+ 		and fk_company = #{fk_company}
+    </select>
+    
+	 
+</mapper>

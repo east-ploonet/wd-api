@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.staff.dao.DeptDao">
+
+    <select id="getDefaultDeptMaster" resultType="CompanyDeptVo">
+        SELECT
+        A.pk_company_dept
+        , A.fk_company
+        , A.fd_dept_name
+        , A.fd_dept_role
+        , A.fd_use_yn
+        , A.fd_default_yn
+        , C.fd_staff_name AS master_staff_name
+        , A.fd_dept_ai_yn
+        , B.fd_dept_master_yn
+        , C.pk_company_staff
+        FROM tbl_company_dept A, tbl_company_dept_staff B, tbl_company_staff C
+        WHERE A.pk_company_dept = B.fk_company_dept
+        AND B.fk_company_staff = C.pk_company_staff and A.fk_company = C.fk_company
+        AND A.fd_use_yn = 'Y' and fd_dept_master_yn = 'Y'
+        AND A.fk_company = #{fk_company}
+        AND A.fd_dept_code = #{fk_staff_work_code}
+        GROUP BY pk_company_dept;
+    </select>
+
+    <insert id="insertCompanyDeptStaff">
+        INSERT INTO tbl_company_dept_staff
+        (
+          fk_company_dept
+        , fk_company_staff
+        , fd_dept_master_yn
+        , fd_regdate
+        )
+        VALUES
+        (
+          #{fk_company_dept}
+        , #{fk_company_staff}
+        , #{fd_dept_master_yn}
+        , now()
+        )
+    </insert>
+
+    <update id="updateDeptStaffDeptMasterN">
+        UPDATE tbl_company_dept_staff
+           SET fd_dept_master_yn     = 'N'
+         WHERE fk_company_dept       = #{fk_company_dept} and fk_company_staff != #{fk_company_staff}
+    </update>
+
+    <update id="updateDeptStaff">
+        UPDATE tbl_company_dept_staff
+           SET fd_dept_master_yn     = #{fd_dept_master_yn}
+         WHERE fk_company_dept       = #{fk_company_dept} and fk_company_staff = #{fk_company_staff}
+    </update>
+
+    <delete id="deleteStaffDept">
+        DELETE FROM tbl_company_dept_staff where fk_company_staff = #{fk_company_staff} and fk_company_dept = #{fk_company_dept}
+    </delete>
+
+	<delete id="deleteStaffDeptNew">
+        DELETE FROM tbl_company_dept_staff where fk_company_dept = #{fk_company_dept}
+    </delete>
+    
+    <select id="getOne" resultType="CompanyDeptStaffVo">
+		SELECT * FROM tbl_company_dept_staff WHERE fk_company_staff = #{fk_company_staff} and fk_company_dept = #{fk_company_dept}
+	</select>
+</mapper>

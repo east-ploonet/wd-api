@@ -1,0 +1,874 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.credit.dao.CreditDao">
+
+    <select id="getPlanNewYear" resultType="CreditNewVo">
+		select * from tbl_wallet_policy_pp_card 
+		where (pp_card_type = "SUBSC_MAIN" and pp_card_cd NOT IN('CARD_SM_001'));
+    </select>
+
+    <select id="getPlanNewMonth" resultType="CreditNewVo">
+		select a.*
+		from tbl_wallet_policy_pp_card a
+		where (a.pp_card_type = 'ONCE_MAIN' or a.pp_card_cd = 'CARD_SM_001')
+		order by a.pp_card_type desc;
+    </select>
+    
+    <select id="getItemList" resultType="ItemResVo">
+    	select
+    	B.pp_card_cd,
+    	C.pp_card_name,
+		A.disp_name,
+		B.disp_val
+		from tbl_wallet_policy_matrix_item A
+		inner join tbl_wallet_policy_matrix_item_cnt B
+		on A.matrix_item_cd = B.matrix_item_cd
+		inner join tbl_wallet_policy_pp_card C
+		on B.pp_card_cd = C.pp_card_cd
+		where screen_cd = 'SCREEN00001' and B.pp_card_cd != "CARD_OM_005"
+    </select>
+    
+    <select id="getItemPlusList" resultType="ItemResVo">
+    	select
+    	B.pp_card_cd,
+    	C.pp_card_name,
+		A.disp_name,
+		B.disp_val
+		from tbl_wallet_policy_matrix_item A
+		inner join tbl_wallet_policy_matrix_item_cnt B
+		on A.matrix_item_cd = B.matrix_item_cd
+		inner join tbl_wallet_policy_pp_card C
+		on B.pp_card_cd = C.pp_card_cd
+		where screen_cd = 'SCREEN00002' and B.pp_card_cd != "CARD_SM_015"
+    </select>
+    
+    <select id="getPlan" resultType="CreditVo">
+        select *
+        from tbl_service_plan
+        where disp_yn = 'Y';
+    </select>
+    
+    <select id="getLastPgPayLog" resultType="PgPayLog">
+		select b.pk_pp_card ,
+		       b.fk_pp_card_p ,
+		       b.fk_company ,
+		       b.pp_card_cd ,
+		       b.pp_card_type ,
+		       b.pp_card_name ,
+		       b.pp_card_status ,
+		       b.credit ,
+		       b.credit_from ,
+		       b.credit_policy ,
+		       b.cost ,
+		       b.disp_order ,
+		       b.deduct_order ,
+		       b.default_yn ,
+		       b.minus_yn ,
+		       b.disp_yn ,
+		       b.pay_yn ,
+		       b.cust_yn ,
+		       b.subsc_yn ,
+		       b.subsc_term_unit ,
+		       b.subsc_term_cnt ,
+		       b.dc_term_unit ,
+		       b.dc_term_cnt ,
+		       b.dc_rate ,
+		       b.pre_use_limit_rate ,
+		       b.limit_term_unit ,
+		       b.limit_term_cnt ,
+		       b.limit_dt_same_yn_from ,
+		       b.limit_dt_same_yn_to ,
+		       b.limit_dt_from ,
+		       b.limit_dt_to ,
+		       b.use_yn ,
+		       b.pay_dt_from ,
+		       b.pay_dt_to ,
+		       b.nth_cnt ,
+		       b.start_yn ,
+		       b.credit_used_rate ,
+		       b.cost_used ,
+		       b.cost_payback ,
+		       b.fk_writer ,
+		       b.fd_regdate ,
+		       b.fk_modifier ,
+		       b.fd_moddate ,
+		       a.fk_pp_card
+		from   tbl_wallet_pp_card_last a
+		       inner join tbl_wallet_pp_card b
+		       on     1           =1
+		       and    b.pk_pp_card=a.fk_pp_card
+		       and    b.fk_company=a.fk_company
+		where  1                  =1
+		and    b.pp_card_status not in ('B20108',
+		                                'B20112',
+		                                'B20113',
+		                                'B20115',
+		                                'B20116')
+		and    b.subsc_yn  ='Y'
+		and    a.fk_company = #{fk_company}
+		limit  1
+    </select>
+    
+    
+    <select id="getPlanService" resultType="CreditItemVo">
+        select *
+        from tbl_credit_item_cnt
+        ORDER BY screen_cd, disp_order asc;
+    </select>
+
+    <select id="getPlanSelectService" resultType="CreditItemVo">
+		SELECT   *
+		FROM     tbl_credit_item_cnt
+		WHERE    screen_cd = 'PLAN0205'
+		AND      NOT fk_service_plan IN ('LT051')
+		ORDER BY disp_order,
+		         pk_credit_item_cnt asc;
+    </select>
+
+    <select id="getDc_rate" resultType="int">
+        select dc_rate
+        from tbl_service_plan_dc
+        where charge_unit = #{charge_unit}
+          and charge_term = #{charge_term}
+    </select>
+
+    <insert id="registerEntry">
+        insert into tbl_pg_bill_log
+        (solution_type,
+         user_type,
+         fk_company,
+         fk_company_staff,
+         fk_service_plan,
+         fk_service_plan_dc,
+         repeat_type,
+         bill_status,
+         item_cd,
+         item_name,
+         service_dt_from,
+         service_dt_to,
+         fd_regdate,
+         fd_moddate,
+         order_company_name)
+        values ('B11',
+                #{user_type},
+                #{pk_company},
+                #{pk_company_staff},
+                'LT011',
+                'DCM01',
+                'B20104',
+                'B20111',
+                'LT011',
+                'Entry',
+                now(),
+                date_add(date_add(now(), interval +1 month), interval -1 day),
+                now(),
+                now(),
+                ' ')
+    </insert>
+    
+    <insert id="registerEntryReserve">
+        insert into tbl_pg_bill_log
+        (solution_type,
+         user_type,
+         fk_company,
+         fk_company_staff,
+         fk_service_plan,
+         fk_service_plan_dc,
+         repeat_type,
+         bill_status,
+         item_cd,
+         item_name,
+         service_dt_from,
+         service_dt_to,
+         fd_regdate,
+         fd_moddate,
+         order_company_name)
+        values ('B11',
+                #{user_type},
+                #{pk_company},
+                #{pk_company_staff},
+                'LT011',
+                'DCM01',
+                'B20104',
+                'B20117',
+                'LT011',
+                'Entry',
+                date_add(now(), interval +1 month),
+                date_add(date_add(now(), interval +2 month), interval -1 day),
+                now(),
+                now(),
+                ' ')
+    </insert>
+
+    <select id="getMyPlan" resultType="int">
+        select C.cost
+		from tbl_wallet_pp_card_last A
+		inner join tbl_wallet_pp_card B   
+		on A.fk_pp_card = B.pk_pp_card
+		inner join tbl_wallet_policy_pp_card C
+		on B.pp_card_cd = C.pp_card_cd
+		where  A.fk_company = #{loginCompanyPk}
+    </select>
+
+    <select id="getMyPlanName" resultType="string">
+        select C.service_plan_name
+        from tbl_pg_bill_log B
+                 left join
+             tbl_service_plan C ON (C.pk_service_plan = B.fk_service_plan)
+        <![CDATA[
+        where fk_company = #{loginCompanyPk}
+          and bill_status = 'B20111'
+          and repeat_type = 'B20104'
+          and service_dt_from <= now()
+          and service_dt_to >= now()
+        ]]>
+    </select>
+
+    <select id="getNextPlanName" resultType="string">
+        select C.service_plan_name
+        from tbl_pg_bill_log B
+                 left join
+             tbl_service_plan C ON (C.pk_service_plan = B.fk_service_plan)
+
+        where fk_company = #{loginCompanyPk}
+          and bill_status = 'B20117'
+          and repeat_type = 'B20104'
+    </select>
+
+    <select id="getMyPlanList" resultType="MyNewCreditItemVo">
+       select C.pp_card_cd,
+		       C.pp_card_name,
+		       C.cost,
+		       C.credit,
+		       A.fd_regdate,
+		        (select sum(credit) from tbl_wallet_use_log where fk_company = #{fk_company}) as use_credit
+		from tbl_wallet_pp_card_last A
+		inner join tbl_wallet_pp_card B   
+		on A.fk_pp_card = B.pk_pp_card
+		inner join tbl_wallet_policy_pp_card C
+		on B.pp_card_cd = C.pp_card_cd
+		where  A.fk_company = #{fk_company}
+    </select>
+    
+    <select id="getPlanList" resultType="MyCreditItemVo">
+        select pp_card_cd, pp_card_name, cost
+        from tbl_wallet_policy_pp_card
+        where pp_card_cd = #{fk_service_plan}
+    </select>
+
+    <select id="getSelectPlan" resultType="MyNewCreditItemVo">
+        select C.pp_card_cd, C.pp_card_name, C.cost, C.credit, now() as fd_regdate, C.pp_card_type
+		from   tbl_wallet_policy_pp_card C
+		where  pp_card_cd = #{pp_card_cd}
+    </select>
+	
+	<select id="getLastSelectPlan" resultType="MyNewCreditItemVo">
+        select B.*
+		from   tbl_wallet_pp_card_last A
+		inner join tbl_wallet_pp_card B
+		ON     A.fk_pp_card = B.pk_pp_card
+		AND A.fk_company = B.fk_company
+		where  A.fk_company = #{loginCompanyPk}
+    </select>
+    
+    <select id="getSelectPlanDc" resultType="ServiceDcVo">
+        select *
+        from tbl_service_plan_dc
+        where charge_unit = #{charge_unit}
+          and charge_term = #{charge_term}
+    </select>
+
+    <select id="getBatchKey" resultType="SubscribePaymentBody">
+        select *
+        from tbl_pg_pay_info
+        where fk_company = #{loginCompanyPk}
+    </select>
+
+    <insert id="registerPgInfo">
+       insert into tbl_pg_pay_info
+        (fk_company,
+         pay_name,
+         pay_method,
+         pay_company_cd,
+         pay_company_name,
+         pay_key,
+         tran_cd,
+         fd_regdate,
+         fk_writer)
+        values (
+                #{fk_company},
+                #{pay_name},
+                #{pay_method},
+                #{pay_company_cd},
+                #{pay_company_name},
+                #{pay_key},
+                #{tran_cd},
+                now(),
+                #{fk_company_staff})
+    </insert>
+    
+    <insert id="registerPgPayLog" useGeneratedKeys="true"  keyProperty="pk_pg_pay_log">
+    insert into tbl_pg_pay_log
+		(
+			fk_company,
+			pay_name,
+			pay_method,
+			pay_company_cd,
+			pay_company_name,
+			pay_key,
+			tran_cd,
+			pg_err_cd,
+			pg_err_desc,
+			fk_writer,
+			fd_regdate,
+			item_cd,
+			pay_dt_from,
+			bill_status,
+			payback_cost
+		)
+		values(
+			#{loginCompanyPk},
+			#{pay_name},
+			#{pay_method},
+			#{pay_company_cd},
+			#{pay_company_name},
+			#{pay_key},
+			#{tran_cd},
+			#{pg_err_cd},
+			#{pg_err_desc},
+			#{pk_company_staff},
+			now(),
+			#{item_cd},
+			now(),
+			#{bill_status},
+			#{payback_cost}
+		)
+    </insert>
+    
+    <insert id="selectRegisterPgPayLog" useGeneratedKeys="true"  keyProperty="pk_pg_pay_log">
+    insert into tbl_pg_pay_log
+		(
+			fk_company,
+			pay_name,
+			pay_method,
+			pay_company_cd,
+			pay_company_name,
+			pay_key,
+			tran_cd,
+			pg_err_cd,
+			pg_err_desc,
+			fk_writer,
+			fd_regdate,
+			fk_modifier,
+			fd_moddate,
+			item_cd,
+			pay_dt_from,
+			log_yy,
+			log_mm,
+			log_dd,
+			bill_status
+		)
+		select fk_company,
+		       pay_name,
+		       pay_method,
+		       pay_company_cd,
+		       pay_company_name,
+		       pay_key,
+		       tran_cd,
+		       pg_err_cd,
+		       pg_err_desc,
+		       fk_writer,
+		       fd_regdate,
+		       fk_modifier,
+		       fd_moddate,
+		       #{pk_pp_card},
+		       now(),
+		       date_format(NOW(), '%y' ),
+		       date_format(NOW(), '%m' ),
+		       date_format(NOW(), '%d' ),
+		       'B20111'
+		from   tbl_pg_pay_info
+		where  fk_company = #{loginCompanyPk}
+		
+    </insert>
+    
+    
+    <update id="updateCard">
+        update tbl_pg_pay_info
+        set pay_key= #{pay_key},
+            pay_method=#{pay_method},
+            pay_company_cd=#{payr_company_cd},
+            pay_name=#{pay_name}
+        where fk_company = #{loginCompanyPk}
+    </update>
+
+    <update id="upgradeBeforeMyPlan">
+        update tbl_pg_bill_log
+<!--         update tbl_pg_pay_log -->
+        set service_dt_to = date_add(now(), interval -1 day),
+<!--         set limit_dt_to = date_add(now(), interval -1 day), -->
+            bill_status='B20114'
+        where bill_status = 'B20111'
+          and fk_company = #{loginCompanyPk}
+    </update>
+
+    <insert id="upgradeMyPlan">
+        insert into tbl_pg_bill_log
+        (solution_type,
+         user_type,
+         fk_company,
+         fk_company_staff,
+         fk_service_plan,
+         fk_service_plan_dc,
+         repeat_type,
+         bill_status,
+         item_cd,
+         item_name,
+         order_no,
+         order_method,
+         order_company_cd,
+         order_company_name,
+         sum_money,
+         service_dt_from,
+         service_dt_to,
+         fd_regdate,
+         fd_moddate)
+        values ('B11',
+                #{user_type},
+                #{pk_company},
+                #{pk_company_staff},
+                #{fk_service_plan},
+                #{fk_service_plan_dc},
+                'B20104',
+                'B20111',
+                #{fk_service_plan},
+                #{service_plan_name},
+                #{order_no},
+                #{order_method},
+                #{order_company_cd},
+                #{order_company_name},
+                #{sum_money},
+                now(),
+                date_add(date_add(now(), interval + #{charge_term} month), interval -1 day),
+                now(),
+                now())
+    </insert>
+
+    <select id="getPlanDc" resultType="ServiceDcVo">
+        select *
+        from tbl_service_plan_dc
+        where pk_service_plan_dc = #{fk_service_plan_dc}
+    </select>
+
+    <delete id="deleteReserve">
+        delete
+        from tbl_pg_bill_log
+        where fk_company = #{pk_company}
+          and fk_company_staff = #{pk_company_staff}
+          and bill_status = 'B20117'
+    </delete>
+
+
+    <insert id="registerBill">
+        insert into tbl_pg_bill_log
+        (solution_type,
+         user_type,
+         fk_company,
+         fk_company_staff,
+         fk_service_plan,
+         fk_service_plan_dc,
+         repeat_type,
+         bill_status,
+         item_cd,
+         item_name,
+         service_dt_from,
+         service_dt_to,
+         fd_regdate,
+         fd_moddate,
+         order_company_name)
+        values ('B11',
+                #{user_type},
+                #{pk_company},
+                #{pk_company_staff},
+                #{fk_service_plan},
+                #{fk_service_plan_dc},
+                'B20104',
+                'B20117',
+                #{fk_service_plan},
+                #{service_plan_name},
+                date_add(now(), interval + #{charge_term} month),
+                date_add(date_add(date_add(now(), interval + #{charge_term} month), interval +1 month ), interval
+                         -1 day),
+                now(),
+                now(),
+                ' ')
+    </insert>
+    
+    <insert id="ppcardReserveRegister">
+		insert into tbl_wallet_pp_card_reserve
+		(
+			fk_company,
+			pp_card_cd,
+			pp_card_type,
+			pp_card_name,
+			credit,
+			cost,
+			disp_order,
+			deduct_order,
+			default_yn,
+			minus_yn,
+			disp_yn,
+			pay_yn,
+			cust_yn,
+			subsc_yn,
+			subsc_term_unit,
+			subsc_term_cnt,
+			dc_term_unit,
+			dc_term_cnt,
+			dc_rate,
+			pre_use_limit_rate,
+			limit_term_unit,
+			limit_term_cnt,
+			limit_dt_same_yn_from,
+			limit_dt_same_yn_to,
+			use_yn,
+			pay_dt_from
+		)
+
+		select 
+			a.fk_company,
+			pp_card_cd,
+			pp_card_type,
+			pp_card_name,
+			credit,
+			cost,
+			disp_order,
+			deduct_order,
+			default_yn,
+			minus_yn,
+			disp_yn,
+			pay_yn,
+			cust_yn,
+			subsc_yn,
+			subsc_term_unit,
+			subsc_term_cnt,
+			dc_term_unit,
+			dc_term_cnt,
+			dc_rate,
+			pre_use_limit_rate,
+			limit_term_unit,
+			limit_term_cnt,
+			limit_dt_same_yn_from,
+			limit_dt_same_yn_to,
+			use_yn,
+			pay_dt_from
+		from tbl_wallet_pp_card_last a
+		inner join tbl_wallet_pp_card b
+		on a.fk_pp_card = b.pk_pp_card
+		where a.fk_company = #{loginCompanyPk}
+    </insert>
+    
+    <insert id="ppcardMerge">
+		
+    </insert>
+    
+    
+    <insert id="registerBillNew">
+    	insert into tbl_pg_pay_log
+        (fk_company,
+         pay_name,
+         pay_method,
+         pay_company_cd,
+         pay_key,
+         tran_cd,
+         fk_writer,
+         bill_status,
+         item_cd,
+         item_cost,
+         fd_regdate,
+         fd_moddate,
+         pay_company_name)
+        values ('B11',
+                #{pk_company},
+                #{pay_name},
+                #{pay_method},
+                #{pay_company_cd},
+                #{tran_cd},
+                #{fk_writer},
+                #{bill_status},
+                #{item_cd},
+                #{item_cost},
+                now(),
+                #{fd_moddate},
+                #{pay_company_name}
+    </insert>
+    <insert id="registerDownBill">
+        insert into tbl_pg_bill_log
+        (solution_type,
+         user_type,
+         fk_company,
+         fk_company_staff,
+         fk_service_plan,
+         fk_service_plan_dc,
+         repeat_type,
+         bill_status,
+         item_cd,
+         item_name,
+         service_dt_from,
+         service_dt_to,
+         fd_regdate,
+         fd_moddate,
+         order_company_name)
+        values ('B11',
+                #{user_type},
+                #{pk_company},
+                #{pk_company_staff},
+                #{fk_service_plan},
+                #{fk_service_plan_dc},
+                'B20104',
+                'B20117',
+                #{fk_service_plan},
+                #{service_plan_name},
+                #{service_dt_from},
+                #{service_dt_to},
+                now(),
+                now(),
+                ' ')
+    </insert>
+	
+	<insert id="pgPayInfoLogInsert">
+		insert into tbl_pg_pay_info_log
+		(
+			fk_company,
+			pay_name,
+			pay_method,
+			pay_company_cd,
+			pay_company_name,
+			pay_key,
+			tran_cd,
+			pg_err_cd,
+			pg_err_desc,
+			fk_writer,
+			fd_regdate,
+			fk_modifier,
+			fd_moddate
+		)
+		select fk_company,
+		       pay_name,
+		       pay_method,
+		       pay_company_cd,
+		       pay_company_name,
+		       pay_key,
+		       tran_cd,
+		       pg_err_cd,
+		       pg_err_desc,
+		       fk_writer,
+		       fd_regdate,
+		       fk_modifier,
+		       fd_moddate
+		from   tbl_pg_pay_info
+		where  fk_company = #{loginCompanyPk}
+	</insert>
+	
+	
+	
+    <select id="getMyCard" resultType="string">
+        select pay_company_name
+        from tbl_pg_pay_info
+        where fk_company = #{loginCompanyPk}
+    </select>
+	
+	<select id="getPgPayInfo" resultType="pgPayInfo">
+		select *
+		from tbl_pg_pay_info 
+		where fk_company = #{loginCompanyPk}
+	</select>
+	
+    <select id="getplanDate" resultType="TblPgBillLogVo">
+        select *
+        from tbl_pg_bill_log
+        where bill_status = 'B20111'
+          and repeat_type = 'B20104'
+          and fk_company = #{loginCompanyPk}
+    </select>
+
+    <select id="getSuccessPay" resultType="SuccessPayVo">
+        select B.service_dt_from, C.service_plan_name, C.charge_amount, D.dc_rate, D.charge_unit
+        from tbl_pg_bill_log B
+                 left join tbl_service_plan C on (C.pk_service_plan = B.fk_service_plan)
+                 left join tbl_service_plan_dc D on (D.pk_service_plan_dc = B.fk_service_plan_dc)
+        where bill_status = 'B20117'
+          and repeat_type = 'B20104'
+          and fk_company = #{pk_company}
+    </select>
+    
+    <select id="getSuccessPayNew" resultType="SuccessPayNewVo">
+		select  A.pp_card_cd,
+		        A.pp_card_name,
+		        A.cost,
+		        A.credit,
+		        A.pay_dt_from,
+                A.pay_dt_to
+		from tbl_wallet_pp_card A
+		inner join tbl_wallet_pp_card_last B   
+		on A.pk_pp_card = B.fk_pp_card
+		where  A.fk_company = #{pk_company}
+    </select>
+
+    <select id="getOptionCredit" resultType="MyPageOptionPostVo">
+        select pk_credit_item as itemSeq, message_type as itemCd
+        from tbl_credit_item where message_type in
+        <foreach collection="req" item="item" index="index" separator="," open="(" close=")">
+            #{item.optionId}
+        </foreach>
+    </select>
+
+    <insert id="registerChargeCredit">
+        insert into tbl_pg_bill_log
+        (solution_type,
+         user_type,
+         fk_company,
+         fk_company_staff,
+         fk_service_plan,
+         fk_service_plan_dc,
+         repeat_type,
+         bill_status,
+         item_cd,
+         item_name,
+         sum_money,
+         service_dt_from,
+         service_dt_to,
+         fd_regdate,
+         fd_moddate,
+         order_no,
+         order_method,
+         order_company_cd,
+         order_company_name)
+        values ('B11',
+                #{userType},
+                #{companyPk},
+                #{companyStaffPk},
+                'LL001',
+                'DC011',
+                'B20103',
+                'B20111',
+                'LL001',
+                '추가충전',
+                #{sum_money},
+                now(),
+                date_add(date_add(now(), interval + 3 year ), interval -1 month ),
+                now(),
+                now(),
+                #{tno},
+                #{order_method},
+                #{card_cd},
+                #{order_company_name})
+    </insert>
+    
+    <select id="getWallet" resultType="MyPageCreditWalletVo">
+        select B.pk_wallet_use_log,C.fd_name, B.limit_dt_from, B.limit_dt_to , B.item_name,
+        B.item_status,B.disp_group_cd,
+        B.credit, B.use_flag, B.fd_regdate
+        from tbl_wallet_use_log B
+        left join tbl_code C on (C.pk_code = B.item_status)
+        where 1=1
+        <if test="startDate != null and endDate != null">
+            <![CDATA[
+                                    and B.fd_regdate >= #{startDate} and B.fd_regdate <= #{endDate}
+            ]]>
+        </if>
+        <choose>
+            <when test="type=='plus'">
+                and B.disp_group_cd = 'B20202'
+            </when>
+            <when test="type=='minus'">
+                and B.disp_group_cd = 'B20203'
+            </when>
+            <when test="type=='delete'">
+                and B.disp_group_cd = 'B20204'
+            </when>
+        </choose>
+        and B.disp_group_cd != 'B20201'
+        and fk_company=#{company_pk}
+        ORDER BY pk_wallet_use_log DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+<!--     <select id="getWallet" resultType="MyPageCreditWalletVo"> -->
+<!--         select B.pk_credit_wallet_log,C.fd_name, B.service_plan_dt_from,B.service_plan_dt_to , B.item_name, -->
+<!--         B.service_plan_status,B.disp_group_cd, -->
+<!--         B.credit, B.use_flag, B.fd_regdate -->
+<!--         from tbl_credit_wallet_log B -->
+<!--         left join tbl_code C on (C.pk_code = B.service_plan_status) -->
+<!--         where 1=1 -->
+<!--         <if test="startDate != null and endDate != null"> -->
+<!--             <![CDATA[ -->
+<!--                                     and B.fd_regdate >= #{startDate} and B.fd_regdate <= #{endDate} -->
+<!--             ]]> -->
+<!--         </if> -->
+<!--         <choose> -->
+<!--             <when test="type=='plus'"> -->
+<!--                 and B.disp_group_cd = 'B20202' -->
+<!--             </when> -->
+<!--             <when test="type=='minus'"> -->
+<!--                 and B.disp_group_cd = 'B20203' -->
+<!--             </when> -->
+<!--             <when test="type=='delete'"> -->
+<!--                 and B.disp_group_cd = 'B20204' -->
+<!--             </when> -->
+<!--         </choose> -->
+<!--         and B.disp_group_cd != 'B20201' -->
+<!--         and fk_company=#{company_pk} -->
+<!--         ORDER BY pk_credit_wallet_log DESC -->
+<!--         LIMIT #{offset}, #{pageSize} -->
+<!--     </select> -->
+    
+    
+    <select id="getWalletCnt" resultType="integer">
+        select COUNT(B.pk_pg_pay_log)
+        from tbl_pg_pay_log B
+        where 1=1
+        <if test="startDate != null and endDate != null">
+            <![CDATA[
+                                    and B.fd_regdate >= #{startDate} and B.fd_regdate <= #{endDate}
+            ]]>
+        </if>
+        <choose>
+            <when test="type=='plus'">
+                and B.bill_status = 'B20202'
+            </when>
+            <when test="type=='minus'">
+                and B.bill_status = 'B20203'
+            </when>
+            <when test="type=='delete'">
+                and B.bill_status = 'B20204'
+            </when>
+        </choose>
+        and B.bill_status != 'B20201'
+        and fk_company=#{company_pk}
+    </select>
+
+    <select id="getOptionPI025" resultType="OptionVo">
+        select pk_credit_wallet_log
+        from tbl_credit_wallet_log
+        where fk_company = #{loginCompanyPk}
+          and credit_item_cd = 'PI026'
+          and use_flag = 'M'
+        <![CDATA[
+          and service_plan_dt_from < now()
+          and service_plan_dt_to > now()
+        ]]>
+    </select>
+    <select id="getOptionPI026" resultType="OptionVo">
+        select pk_credit_wallet_log
+        from tbl_credit_wallet_log
+        where fk_company = #{loginCompanyPk}
+          and credit_item_cd = 'PI026'
+          and use_flag = 'M'
+        <![CDATA[
+          and service_plan_dt_from < now()
+          and service_plan_dt_to > now()
+        ]]>
+    </select>
+
+
+</mapper>

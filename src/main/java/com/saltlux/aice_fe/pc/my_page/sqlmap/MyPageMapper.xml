@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.saltlux.aice_fe.pc.my_page.dao.MyPageDao">
+
+    <select id="getIndividualMyPage" resultType="MyPageCompanyVo">
+        select B.fd_staff_name,
+               B.fd_staff_mobile,
+               B.fd_staff_duty,
+               B.fd_staff_email,
+               B.fd_staff_id,
+               C.fd_company_logo_file_path,
+               C.fd_company_logo_file_name,
+               B.fd_staff_gender_mf,
+               C.fd_company_id,
+               C.fd_address_zipcode,
+               C.fd_address_common,
+               C.fd_address_detail
+        from tbl_company_staff B
+                 left join
+             tbl_company C ON (C.pk_company = B.fk_company)
+        where B.pk_company_staff = #{loginCompanyStaffPk}
+    </select>
+
+    <select id="getStatisticItem" resultType="StatisticItemVo">
+        select B.fk_statistic_item as pk_statistic_item, B.fk_statistic_group, C.item_name, B.input_val
+        from tbl_statistic_item_log B
+                 LEFT join tbl_statistic_item C
+                           ON (C.pk_statistic_item = B.fk_statistic_item)
+        where fk_company = #{loginCompanyPk}
+    </select>
+
+
+    <select id="getCompanyMyPage" resultType="MyPageCompanyVo">
+        select B.fd_staff_name,
+               C.fd_company_logo_file_path,
+               C.fd_company_logo_file_name,
+               C.fd_biz_license_file_path,
+               C.fd_biz_license_file_name,
+               B.fd_staff_mobile,
+               B.fd_staff_email,
+               B.fd_staff_phone,
+               B.fd_staff_duty,
+               B.fd_staff_id,
+               B.fd_staff_gender_mf,
+               C.fd_company_id,
+               C.fd_company_name,
+               C.fd_biz_license_num,
+               C.fd_company_phone,
+               C.fd_company_website,
+               C.fd_address_zipcode,
+               C.fd_address_common,
+               C.fd_address_detail
+
+        from tbl_company C
+                 left join
+             tbl_company_staff B ON (C.pk_company = B.fk_company)
+        where C.pk_company = #{loginCompanyPk}
+          and B.fd_staff_ai_yn = 'N'
+    </select>
+
+    <select id="getDept" resultType="string">
+        select fd_dept_name
+        from tbl_company_dept
+        where fk_company = #{loginCompanyPk}
+          and fd_default_yn = 'N'
+    </select>
+
+
+    <update id="updateCompany">
+        update tbl_company
+        set fd_company_phone= #{fd_company_phone},
+            fd_company_website= #{fd_company_website},
+            fd_biz_license_num = #{fd_biz_license_num},
+            fd_address_zipcode= #{fd_address_zipcode},
+            fd_company_logo_file_path= #{fd_company_logo_file_path},
+            fd_company_logo_file_name= #{fd_company_logo_file_name},
+            fd_biz_license_file_path= #{fd_biz_license_file_path},
+            fd_biz_license_file_name= #{fd_biz_license_file_name},
+            fd_address_common = #{fd_address_common},
+            fd_address_detail = #{fd_address_detail}
+        where pk_company = #{pk_company}
+
+    </update>
+
+    <update id="updateCompanyStaff">
+        update tbl_company
+        set fd_company_logo_file_path= #{fd_company_logo_file_path},
+            fd_company_logo_file_name= #{fd_company_logo_file_name},
+            fd_address_zipcode= #{fd_address_zipcode},
+            fd_address_common        = #{fd_address_common},
+
+            fd_address_detail        = #{fd_address_detail}
+        where pk_company = #{pk_company}
+
+    </update>
+    <update id="updateStaff">
+        update tbl_company_staff
+        set  fd_staff_mobile_verify_dt = #{fd_staff_mobile_verify_dt},
+             fd_staff_mobile_type = #{fd_staff_mobile_type},
+             fd_staff_mobile = #{fd_staff_mobile},
+             fd_staff_name = #{fd_staff_name},
+             fd_staff_gender_mf = #{fd_staff_gender_mf},
+             fd_staff_birth = #{fd_staff_birth}
+        where
+            fk_company = #{pk_company}
+    </update>
+    <delete id="deleteStatisticMyPage">
+        delete
+        from tbl_statistic_item_log
+        where fk_company = #{pk_company}
+    </delete>
+
+    <select id="getPlan" resultType="MyPlanVo">
+         select D.pp_card_cd as fk_service_plan,
+	       0 as fk_service_plan_dc,
+	       D.pp_card_name as item_name,
+	       C.limit_dt_from as service_dt_from,
+	       C.limit_dt_to as service_dt_to,
+	       C.cost as charge_amount,
+	       C.credit as credit_main
+		from   tbl_wallet_pp_card_last B
+		       inner join tbl_wallet_pp_card C
+		       on     B.fk_pp_card = C.pk_pp_card
+		       inner join tbl_wallet_policy_pp_card D
+		       on C.pp_card_cd = D.pp_card_cd
+		     
+		where  B.fk_company  = #{loginCompanyPk}
+    </select>
+    
+    <select id="getPlanNew" resultType="MyPlanNewVo">
+		select
+		     b.pk_pp_card
+		    ,b.fk_pp_card_p
+		    ,b.fk_company
+		    ,b.pp_card_cd
+		    ,b.pp_card_type
+		    ,b.pp_card_name
+		    ,b.pp_card_status
+		    ,b.credit
+		    ,b.credit_from
+		    ,b.credit_policy
+		    ,b.cost
+		    ,b.disp_order
+		    ,b.deduct_order
+		    ,b.default_yn
+		    ,b.minus_yn
+		    ,b.disp_yn
+		    ,b.pay_yn
+		    ,b.cust_yn
+		    ,b.subsc_yn
+		    ,b.subsc_term_unit
+		    ,b.subsc_term_cnt
+		    ,b.dc_term_unit
+		    ,b.dc_term_cnt
+		    ,b.dc_rate
+		    ,b.pre_use_limit_rate
+		    ,b.limit_term_unit
+		    ,b.limit_term_cnt
+		    ,b.limit_dt_same_yn_from
+		    ,b.limit_dt_same_yn_to
+		    ,b.limit_dt_from
+		    ,b.limit_dt_to
+		    ,b.use_yn
+		    ,b.pay_dt_from
+		    ,b.pay_dt_to
+		    ,b.nth_cnt
+		    ,b.start_yn
+		    ,b.credit_used_rate
+		    ,b.cost_used
+		    ,b.cost_payback
+		    ,b.fk_writer
+		    ,b.fd_regdate
+		    ,b.fk_modifier
+		    ,b.fd_moddate
+		    ,a.fk_pp_card
+		from
+		    tbl_wallet_pp_card_last a
+		inner join
+		    tbl_wallet_pp_card b
+		on 1=1
+		    and b.pk_pp_card=a.fk_pp_card
+		    and b.fk_company=a.fk_company
+		where 1=1
+		    and b.pp_card_status not in ('B20108','B20112','B20113','B20115','B20116')
+		    and b.subsc_yn='Y'
+		    and a.fk_company=#{loginCompanyPk}
+		limit 1
+    </select>
+
+    <select id="getNextPlan" resultType="MyPlanVo">
+        select B.fk_service_plan,
+               B.fk_service_plan_dc,
+               B.item_name,
+               B.service_dt_from,
+               B.service_dt_to,
+               C.charge_amount,
+               C.credit_free,
+               C.credit_main,
+               D.dc_rate,
+               D.charge_unit,
+               D.charge_term
+        from tbl_pg_bill_log B
+                 left join tbl_service_plan C on (C.pk_service_plan = B.fk_service_plan)
+                 left join tbl_service_plan_dc D on (D.pk_service_plan_dc = B.fk_service_plan_dc)
+        where fk_company = #{loginCompanyPk}
+          and bill_status = 'B20117'
+
+    </select>
+
+
+    <select id="getOptionHistory" resultType="MyPageOptionHistoryVo">
+        select A.pk_credit_wallet_log,
+               A.credit,
+               A.fd_moddate as date,
+               A.item_count,
+               A.service_plan_month_cnt as item_month,
+               A.credit_item_cd,
+               Cast(A.credit/A.item_count as Int) as one_item_credit,
+               CONCAT(A.item_name," 추가") as item_name
+        from tbl_credit_wallet_log A
+        where  fk_company = #{loginCompanyPk}
+          and A.fd_moddate >=(NOW() - INTERVAL 2 YEAR)
+          and (credit_item_cd="PI025" or credit_item_cd="PI026")
+        order by A.fd_moddate desc;
+    </select>
+
+    <select id="getPayLog" resultType="MyPagePayLogVo">
+		select A.pk_pg_pay_log, 
+               A.bill_status, 
+               A.sum_cost, 
+               A.tran_cd, 
+               A.pay_company_name, 
+               A.pay_company_cd,
+               A.fd_regdate,
+               A.bill_status,
+               A.pay_method,
+               (select B.pp_card_name tbl_wallet_policy_pp_card) as pp_card_name
+        from tbl_pg_pay_log A
+        inner join tbl_wallet_policy_pp_card B
+        on A.item_cd = B.pp_card_cd
+        and A.tran_cd is not null
+        and A.tran_cd != ''
+        and A.bill_status !='B20117'
+        <if test="start != null and end != null">
+            <![CDATA[
+                and A.fd_regdate >= #{start} and A.fd_regdate <= #{end}
+            ]]>
+        </if>
+        where fk_company = #{companyPk}
+    </select>
+
+    <select id="getPayLogCnt" resultType="int">
+        select COUNT(B.pk_pg_pay_log)
+        from tbl_pg_pay_log B
+        where fk_company = #{companyPk}
+        <if test="start != null and end != null">
+            <![CDATA[
+                and B.fd_regdate >= #{start} and B.fd_regdate <= #{end}
+            ]]>
+        </if>
+        and B.bill_status !='B20117'
+    </select>
+    
+    <select id="getMyCredit" resultType="int">
+        select ifnull(sum(A.credit), 0) 
+        from tbl_wallet_pp_card A
+        where  A.fk_company  = #{companyPk}
+    </select>
+    
+    <select id="getCredit" resultType="PgBillVo">
+        select * from tbl_wallet_policy_pp_card
+        where use_yn = 'Y'
+        and pp_card_cd in ('CARD_OM_002','CARD_OM_003','CARD_OM_004')
+        order by disp_order
+    </select>
+</mapper>
