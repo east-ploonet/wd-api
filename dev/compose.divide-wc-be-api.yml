@@ -1,0 +1,36 @@
+version: '3.5'
+
+networks:
+  net-workcenter:
+    driver: bridge
+    name: net-workcenter
+services:
+  wd-api:
+    container_name: wd-api
+    image: ploonet:v3
+    privileged: true
+    tty: true
+    dns:
+      - 10.0.0.2
+    dns_search:
+      - ap-northeast-2.compute.internal
+    networks:
+      net-workcenter:
+    sysctls:
+      net.ipv4.conf.all.forwarding: 1
+    ports:
+      - "8091:8091"
+    environment:
+      APP_PROFILE: divide
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /var/workcenter/pods/wd-api:/var/workcenter/wd-api
+    working_dir: /var/workcenter/wd-api
+    entrypoint: /sbin/init && /var/workcenter/startup.sh
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091/health/check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
